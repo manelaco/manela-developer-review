@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -14,14 +13,23 @@ const Index = () => {
     navigate('/onboarding/step-one');
   };
 
+  const goToDashboard = () => {
+    navigate('/dashboard');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Logo />
-          <Button onClick={startOnboarding} className="bg-manela hover:bg-manela-dark">
-            Get Started
-          </Button>
+          <div className="flex gap-4">
+            <Button onClick={goToDashboard} variant="outline" className="border-manela text-manela hover:bg-manela hover:text-white">
+              Go to Dashboard
+            </Button>
+            <Button onClick={startOnboarding} className="bg-manela hover:bg-manela-dark">
+              Get Started
+            </Button>
+          </div>
         </div>
       </header>
 
