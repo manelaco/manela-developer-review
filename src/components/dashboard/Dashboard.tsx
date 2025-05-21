@@ -3,13 +3,38 @@ import { useNavigate } from 'react-router-dom';
 import Logo from '../Logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { FileText, Users, BookOpen, FileCheck, MessageCircle, Briefcase, ArrowRight, Bell, Settings, Clock, Book, Bookmark, GalleryHorizontal } from 'lucide-react';
+import { 
+  Plus, 
+  FileText, 
+  BookOpen, 
+  Settings, 
+  Download, 
+  Video, 
+  ChevronLeft, 
+  ChevronRight, 
+  Filter, 
+  SlidersHorizontal, 
+  Calendar, 
+  UserPlus, 
+  ClipboardList, 
+  Bell,
+  Users,
+  FileCheck,
+  Briefcase,
+  Book,
+  MessageCircle,
+  Clock,
+  ArrowRight,
+  LayoutDashboard,
+  HelpCircle
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { toast } from 'sonner';
-import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+import { addDays, startOfWeek, endOfWeek, format, isWithinInterval, parseISO } from 'date-fns';
 
 interface OnboardingData {
   companyName?: string;
@@ -42,10 +67,109 @@ const colorClasses: Record<string, string> = {
   reintegration: 'bg-indigo-50 text-indigo-800',
 };
 
+const getWeekDays = (date: Date) => {
+  const start = startOfWeek(date, { weekStartsOn: 1 }); // Monday
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+};
+
+const newsHeadlines = [
+  {
+    title: 'Parental Leave Laws Updated in 2024',
+    source: 'Government of Canada',
+    url: '#',
+  },
+  {
+    title: 'Quebec Expands Parental Leave Benefits',
+    source: 'CBC News',
+    url: '#',
+  },
+  {
+    title: 'Legal Rights for New Parents: What to Know',
+    source: 'Canadian Bar Association',
+    url: '#',
+  },
+  {
+    title: 'Employers Adapting to New Leave Policies',
+    source: 'The Globe and Mail',
+    url: '#',
+  },
+  {
+    title: 'Political Debate: National Parental Leave Standards',
+    source: 'CTV News',
+    url: '#',
+  },
+];
+
+const brandColor = 'text-[#A85B2A]';
+const brandBg = 'bg-[#F8F6F3]';
+const brandSidebar = 'bg-[#F8F6F3] border-r border-[#E5E3DF]';
+const brandActive = 'bg-[#EDE6DE] text-[#A85B2A] font-semibold';
+
+const navItems = [
+  { name: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, active: true },
+  { name: 'Leave Plans', icon: <Users className="h-5 w-5" /> },
+  { name: 'Template Library', icon: <FileText className="h-5 w-5" /> },
+  { name: 'Learning Center', icon: <BookOpen className="h-5 w-5" /> },
+  { name: 'Company Settings', icon: <Settings className="h-5 w-5" /> },
+  { name: 'Help Center', icon: <HelpCircle className="h-5 w-5" /> },
+];
+
+const actionCards = [
+  {
+    title: 'Create global policy',
+    icon: <Calendar className="h-6 w-6 text-[#2A7FA8]" />,
+    btn: 'View details',
+    color: 'bg-[#F3F8FC]'
+  },
+  {
+    title: 'Create a custom leave plan',
+    icon: <UserPlus className="h-6 w-6 text-[#2A4CA8]" />,
+    btn: 'View details',
+    color: 'bg-[#F3F4FC]'
+  },
+  {
+    title: 'Template library',
+    icon: <FileText className="h-6 w-6 text-[#A85B2A]" />,
+    btn: 'View details',
+    color: 'bg-[#FCF6F3]'
+  },
+];
+
+const employees = [
+  { name: 'Finn Hansen', job: 'Marketing Lead', leave: '2023-05-05', return: '2024-05-05', type: 'Parental', status: 'ACTIVE', support: 'Activated', avatar: '' },
+  { name: 'Hanna Baptista', job: 'Graphic Designer', leave: '2023-05-05', return: '2024-05-05', type: 'Long-term', status: 'ON LEAVE', support: 'Service Initiated', avatar: '' },
+  { name: 'Melinda Creel', job: 'Finance Director', leave: '2023-05-05', return: '2024-05-05', type: 'Caregiver', status: 'DELAYED', support: 'Service Initiated', avatar: '' },
+  { name: 'Rayna Torff', job: 'Project Manager', leave: '2023-05-05', return: '2024-05-05', type: 'Long - extended leave', status: 'ACTIVE', support: 'Activated', avatar: '' },
+  { name: 'Giana Lipshutz', job: 'Creative Director', leave: '2023-05-05', return: '2024-05-05', type: 'Union short leave', status: 'ON LEAVE', support: 'Service Initiated', avatar: '' },
+  { name: 'James George', job: 'Business Analyst', leave: '2023-05-05', return: '2024-05-05', type: 'Other - Long-term', status: 'DELAYED', support: 'Service Initiated', avatar: '' },
+  { name: 'Jordyn George', job: 'IT Support Staff', leave: '2023-05-05', return: '2024-05-05', type: 'Other - Short', status: 'ON LEAVE', support: 'Activated', avatar: '' },
+  { name: 'Skylar Herwitz', job: 'Manager, Comms', leave: '2023-05-05', return: '2024-05-05', type: 'Request - Adoption', status: 'ACTIVE', support: 'Activated', avatar: '' },
+];
+
+const calendarDays = [15, 16, 17, 18, 19, 20, 21];
+const today = 19;
+
+const events = [
+  { name: 'James Carter', date: 'May 23 - Jun 10', type: 'Parental Leave', avatar: '', color: 'bg-[#F3F8FC] text-[#2A7FA8]' },
+  { name: 'James Carter', date: 'May 23 - Jun 10', type: 'Parental Leave', avatar: '', color: 'bg-[#F3F8FC] text-[#2A7FA8]' },
+];
+const returning = [
+  { name: 'David Kim', date: 'Returning May 26 - Family Leave', note: 'Reintegration documents needed', color: 'bg-[#E6F7F1] text-[#1CA97A]' },
+];
+const news = [
+  { title: 'Supreme Court Rules on Paid Parental Leave', date: '16 May 2023', time: '4 min read', featured: true },
+  { title: 'New Federal Guidance on Sick Leave Policies', date: '14 May 2023', time: '4 min read' },
+  { title: 'State Bills Expand Family Leave', date: '10 May 2023', time: '3 min read' },
+];
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<OnboardingData>({});
   const [loading, setLoading] = useState(true);
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const weekDays = getWeekDays(calendarDate);
+  const weekStart = startOfWeek(calendarDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(calendarDate, { weekStartsOn: 1 });
 
   useEffect(() => {
     // Retrieve user data from local storage
@@ -141,6 +265,68 @@ const Dashboard: React.FC = () => {
     );
   };
 
+  const rightColumn = (
+    <div className="flex flex-col h-full p-6 gap-6 bg-gray-50">
+      {/* Calendar Card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            className="p-2 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+            onClick={() => setCalendarDate(addDays(calendarDate, -7))}
+            aria-label="Previous week"
+          >
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
+          </button>
+          <div className="font-bold text-base text-navy text-center flex-1">
+            {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+          </div>
+          <button
+            className="p-2 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+            onClick={() => setCalendarDate(addDays(calendarDate, 7))}
+            aria-label="Next week"
+          >
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
+        <div className="grid grid-cols-7 gap-2">
+          {weekDays.map((day, idx) => (
+            <div key={idx} className={
+              'flex flex-col items-center justify-center rounded-lg py-2.5 transition-colors ' +
+              (format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+                ? 'bg-brand text-white font-bold shadow-sm'
+                : 'bg-gray-50 text-gray-700 hover:bg-gray-100')
+            }>
+              <span className="text-xs uppercase tracking-wide mb-1">{format(day, 'EEE')}</span>
+              <span className="text-base">{format(day, 'd')}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Events Card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col shadow-sm">
+        <div className="font-bold text-base text-navy mb-4">This Week's Events</div>
+        <div className="text-gray-400 text-sm py-2">No employee leave or return events this week.</div>
+      </div>
+
+      {/* News Card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col shadow-sm">
+        <div className="font-bold text-base text-navy mb-4">Parental Leave News</div>
+        <ul className="flex flex-col gap-2">
+          {newsHeadlines.map((news, idx) => (
+            <li key={idx} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
+              <div className="flex flex-col min-w-0">
+                <a href={news.url} className="font-medium text-gray-800 hover:text-brand text-sm truncate" target="_blank" rel="noopener noreferrer">{news.title}</a>
+                <span className="text-xs text-gray-400">{news.source}</span>
+              </div>
+              <span className="text-gray-300 text-lg ml-3 flex-shrink-0">→</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -155,148 +341,158 @@ const Dashboard: React.FC = () => {
 
   return (
     <SidebarProvider>
-      <Sidebar side="left" variant="sidebar" collapsible="offcanvas">
-        {/* Left sidebar content goes here */}
-      </Sidebar>
-      <Sidebar side="right" variant="sidebar" collapsible="offcanvas">
-        {/* Right sidebar content goes here */}
-      </Sidebar>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-            <Logo />
-            
-            <div className="flex items-center gap-6">
-              <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-                <Bell className="h-5 w-5 text-gray-600" />
-              </Button>
-              <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-                <Settings className="h-5 w-5 text-gray-600" />
-              </Button>
-              <Avatar className="border-2 border-gray-200">
-                <AvatarFallback className="bg-manela text-white font-medium">{userInitials}</AvatarFallback>
-              </Avatar>
+      <div className="flex min-h-screen">
+        {/* Left Sidebar */}
+        <aside className={`w-64 ${brandSidebar} flex flex-col py-8 px-4`}>
+          <div className="mb-10 flex items-center gap-2 px-2">
+            <span className={`text-3xl font-bold ${brandColor} tracking-tight`}>manela</span>
+          </div>
+          <nav className="flex flex-col gap-1">
+            {navItems.map((item, i) => (
+              <div
+                key={item.name}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-gray-700 hover:bg-[#EDE6DE] hover:text-[#A85B2A] cursor-pointer ${item.active ? brandActive : ''}`}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </div>
+            ))}
+          </nav>
+        </aside>
+        {/* Main Content */}
+        <main className="flex-1 bg-white min-h-screen flex flex-col">
+          {/* Header */}
+          <header className="h-20 flex items-center border-b border-[#E5E3DF] px-12">
+            <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+          </header>
+          {/* Welcome */}
+          <div className="px-12 pt-8 pb-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome Back, Wolf Pixel <span className="inline-block">👋</span></h2>
+          </div>
+          {/* Action Cards */}
+          <div className="flex gap-6 px-12 pb-8">
+            {actionCards.map((card, i) => (
+              <div key={i} className={`flex-1 rounded-xl border border-[#E5E3DF] ${card.color} flex flex-col items-start p-6 min-w-[220px]`}>
+                <div className="mb-4">{card.icon}</div>
+                <div className="font-semibold text-lg mb-2 text-gray-900">{card.title}</div>
+                <Button variant="outline" className="mt-auto px-3 py-2 border border-[#E5E3DF] text-gray-700 flex items-center gap-2 group">
+                  {card.btn}
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          {/* Employees Table */}
+          <div className="px-12 pb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">Employees</h3>
+              <Button className="bg-black text-white px-5 py-2 rounded-lg text-sm font-semibold">+ Add New Employee</Button>
             </div>
-          </div>
-        </header>
-        
-        <main className="flex-grow container mx-auto px-6 py-10">
-          <div className="mb-10">
-            <h1 className="text-4xl font-bold mb-3 text-gray-900">Welcome to your Manela Dashboard</h1>
-            <p className="text-gray-600 text-lg">
-              {data.companyName || 'Your Company'} · {domain}
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <Card className="bg-white shadow-sm hover:shadow-md transition-shadow border-gray-100">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xl font-semibold text-gray-900">Company Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Company Size:</span>
-                    <span className="font-medium text-gray-900">{data.companySize || 'Not specified'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Industry:</span>
-                    <span className="font-medium text-gray-900">{data.industry || 'Not specified'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Your Role:</span>
-                    <span className="font-medium text-gray-900">{data.role || 'HR Manager'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Tenant:</span>
-                    <span className="font-medium text-gray-900">{data.tenant || 'hr'}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-sm hover:shadow-md transition-shadow border-gray-100">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xl font-semibold text-gray-900">Platform Access</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm">
-                  {(data.platforms || []).filter(p => p.selected).map(platform => (
-                    <div key={platform.id} className="flex justify-between items-center">
-                      <span className="text-gray-500">{platform.name}:</span>
-                      <Badge variant="outline" className="bg-manela/10 text-manela border-manela/20">
-                        {platform.seats} seat{platform.seats !== 1 ? 's' : ''}
-                      </Badge>
-                    </div>
+            <div className="bg-white border border-[#E5E3DF] rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-[#F8F6F3]">
+                  <tr>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">Employee Name</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">Job Title</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">Leave dates</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">Return date</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">Leave type</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">Employee Status</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500">Support Center</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((emp, i) => (
+                    <tr key={i} className="border-b border-[#F8F6F3] hover:bg-[#F8F6F3]">
+                      <td className="px-6 py-3 flex items-center gap-3">
+                        <Avatar className="h-8 w-8 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                        <span className="font-medium text-gray-900">{emp.name}</span>
+                      </td>
+                      <td className="px-6 py-3 text-gray-700">{emp.job}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.leave}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.return}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.type}</td>
+                      <td className="px-6 py-3">
+                        <Badge className={`px-3 py-1 rounded-full text-xs font-semibold ${emp.status === 'ACTIVE' ? 'bg-[#E6F7F1] text-[#1CA97A]' : emp.status === 'ON LEAVE' ? 'bg-[#F3F8FC] text-[#2A7FA8]' : 'bg-[#FCF6F3] text-[#A85B2A]'}`}>{emp.status}</Badge>
+                      </td>
+                      <td className="px-6 py-3 text-gray-700">{emp.support}</td>
+                    </tr>
                   ))}
-                  {(!data.platforms || data.platforms.filter(p => p.selected).length === 0) && (
-                    <div className="text-gray-500">No platforms selected</div>
-                  )}
+                </tbody>
+              </table>
+              {/* Pagination */}
+              <div className="flex items-center justify-between px-6 py-3 bg-[#F8F6F3] text-xs text-gray-500">
+                <div>Showing 1 to 8 of 8 employees</div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0"><ChevronLeft className="h-4 w-4" /></Button>
+                  <span className="px-2">1</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0"><ChevronRight className="h-4 w-4" /></Button>
                 </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-sm hover:shadow-md transition-shadow border-gray-100">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xl font-semibold text-gray-900">Quick Stats</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span className="text-gray-900 text-sm font-medium">Account active</span>
-                  </div>
-                  <div className="text-sm text-gray-500 flex items-center gap-3">
-                    <Clock className="w-4 h-4" />
-                    <span>Last updated: {new Date().toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Resources</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {resourceCards.map(resource => (
-                <Card key={resource.id} className="bg-white shadow-sm hover:shadow-md transition-shadow border-gray-100 overflow-hidden">
-                  <AspectRatio ratio={16 / 9}>
-                    <img
-                      src={resourceImages[resource.id]}
-                      alt={resource.title}
-                      className="object-cover w-full h-full"
-                    />
-                  </AspectRatio>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`p-2 rounded-lg ${colorClasses[resource.id]}`}>
-                        {resource.icon}
-                      </div>
-                      <CardTitle className="text-xl font-semibold text-gray-900">{resource.title}</CardTitle>
-                    </div>
-                    <CardDescription className="text-gray-600">{resource.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 text-sm mb-4">{resource.longDesc}</p>
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span>{resource.readTime}</span>
-                      </div>
-                      <span>{resource.updatedAt}</span>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-0">
-                    <Button variant="ghost" className="w-full justify-between group">
-                      <span>Read more</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+              </div>
             </div>
           </div>
         </main>
+        {/* Right Sidebar */}
+        <aside className="w-96 bg-white border-l border-[#E5E3DF] flex flex-col px-6 py-8 gap-6">
+          {/* Calendar */}
+          <div className="bg-[#F8F6F3] rounded-xl p-5 mb-2">
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-semibold text-gray-900">January 2024</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
+              <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {calendarDays.map(day => (
+                <div key={day} className={`py-1.5 rounded-lg ${day === today ? 'bg-[#A85B2A] text-white font-bold' : 'bg-white text-gray-900'}`}>{day}</div>
+              ))}
+            </div>
+          </div>
+          {/* Events */}
+          <div>
+            <div className="font-semibold text-gray-900 mb-2">Leaving this week</div>
+            {events.map((ev, i) => (
+              <div key={i} className={`flex items-center gap-3 rounded-lg px-3 py-2 mb-2 ${ev.color}`}>
+                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{ev.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{ev.name}</div>
+                  <div className="text-xs">{ev.date} · {ev.type}</div>
+                </div>
+              </div>
+            ))}
+            <div className="font-semibold text-gray-900 mb-2 mt-4">Returning</div>
+            {returning.map((ret, i) => (
+              <div key={i} className={`flex items-center gap-3 rounded-lg px-3 py-2 mb-2 ${ret.color}`}>
+                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{ret.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{ret.name}</div>
+                  <div className="text-xs">{ret.date}</div>
+                  <div className="text-xs font-semibold text-[#1CA97A]">{ret.note}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* News */}
+          <div>
+            <div className="font-semibold text-gray-900 mb-2">Legal Leave News</div>
+            <input className="w-full mb-2 px-3 py-2 rounded-lg border border-[#E5E3DF] text-sm" placeholder="Search news or topics..." />
+            <div className="flex flex-col gap-2">
+              {news.map((n, i) => (
+                <div key={i} className={`rounded-lg px-3 py-2 ${n.featured ? 'bg-[#FCF6F3] border-l-4 border-[#A85B2A]' : 'bg-[#F8F6F3]' }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    {n.featured && <span className="text-xs font-semibold text-[#A85B2A] bg-[#EDE6DE] px-2 py-0.5 rounded">Featured</span>}
+                    <span className="font-medium text-gray-900 text-sm">{n.title}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">{n.date} · {n.time}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
       </div>
     </SidebarProvider>
   );
