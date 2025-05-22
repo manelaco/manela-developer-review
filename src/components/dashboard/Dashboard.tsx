@@ -26,7 +26,8 @@ import {
   Clock,
   ArrowRight,
   LayoutDashboard,
-  HelpCircle
+  HelpCircle,
+  Menu
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
@@ -167,6 +168,7 @@ const Dashboard: React.FC = () => {
   const [data, setData] = useState<OnboardingData>({});
   const [loading, setLoading] = useState(true);
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const weekDays = getWeekDays(calendarDate);
   const weekStart = startOfWeek(calendarDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(calendarDate, { weekStartsOn: 1 });
@@ -342,8 +344,16 @@ const Dashboard: React.FC = () => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
+        {/* Mobile Menu Button */}
+        <button 
+          className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-[#F8F6F3] border border-[#E5E3DF]"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          <Menu className="h-6 w-6 text-[#A85B2A]" />
+        </button>
+
         {/* Left Sidebar */}
-        <aside className={`w-64 ${brandSidebar} flex flex-col py-8 px-4`}>
+        <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 ${brandSidebar} flex flex-col py-8 px-4 transform transition-transform duration-200 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
           <div className="mb-10 flex items-center gap-2 px-2">
             <span className={`text-3xl font-bold ${brandColor} tracking-tight`}>manela</span>
           </div>
@@ -359,18 +369,21 @@ const Dashboard: React.FC = () => {
             ))}
           </nav>
         </aside>
+
         {/* Main Content */}
-        <main className="flex-1 bg-white min-h-screen flex flex-col">
+        <main className="flex-1 min-h-screen bg-white lg:ml-64 w-full">
           {/* Header */}
-          <header className="h-20 flex items-center border-b border-[#E5E3DF] px-12">
+          <header className="h-20 flex items-center border-b border-[#E5E3DF] px-4 md:px-8">
             <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
           </header>
+
           {/* Welcome */}
-          <div className="px-12 pt-8 pb-4">
+          <div className="px-4 md:px-8 pt-8 pb-4">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome Back, Wolf Pixel <span className="inline-block">👋</span></h2>
           </div>
+
           {/* Action Cards */}
-          <div className="flex gap-6 px-12 pb-8">
+          <div className="flex flex-col lg:flex-row gap-6 px-4 md:px-8 pb-8">
             {actionCards.map((card, i) => (
               <div key={i} className={`flex-1 rounded-xl border border-[#E5E3DF] ${card.color} flex flex-col items-start p-6 min-w-[220px]`}>
                 <div className="mb-4">{card.icon}</div>
@@ -382,14 +395,15 @@ const Dashboard: React.FC = () => {
               </div>
             ))}
           </div>
+
           {/* Employees Table */}
-          <div className="px-12 pb-8">
-            <div className="flex items-center justify-between mb-4">
+          <div className="px-4 md:px-8 pb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Employees</h3>
-              <Button className="bg-black text-white px-5 py-2 rounded-lg text-sm font-semibold">+ Add New Employee</Button>
+              <Button className="bg-black text-white px-5 py-2 rounded-lg text-sm font-semibold w-full lg:w-auto">+ Add New Employee</Button>
             </div>
-            <div className="bg-white border border-[#E5E3DF] rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white border border-[#E5E3DF] rounded-xl overflow-x-auto">
+              <table className="w-full text-sm min-w-[800px]">
                 <thead className="bg-[#F8F6F3]">
                   <tr>
                     <th className="text-left px-6 py-3 font-medium text-gray-500">Employee Name</th>
@@ -432,8 +446,9 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </main>
+
         {/* Right Sidebar */}
-        <aside className="w-96 bg-white border-l border-[#E5E3DF] flex flex-col px-6 py-8 gap-6">
+        <aside className="hidden xl:block w-96 bg-white border-l border-[#E5E3DF] flex flex-col px-6 py-8 gap-6">
           {/* Calendar */}
           <div className="bg-[#F8F6F3] rounded-xl p-5 mb-2">
             <div className="flex items-center justify-between mb-4">
@@ -452,6 +467,7 @@ const Dashboard: React.FC = () => {
               ))}
             </div>
           </div>
+
           {/* Events */}
           <div>
             <div className="font-semibold text-gray-900 mb-2">Leaving this week</div>
@@ -476,6 +492,7 @@ const Dashboard: React.FC = () => {
               </div>
             ))}
           </div>
+
           {/* News */}
           <div>
             <div className="font-semibold text-gray-900 mb-2">Legal Leave News</div>
@@ -493,6 +510,14 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </aside>
+
+        {/* Mobile Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
       </div>
     </SidebarProvider>
   );
