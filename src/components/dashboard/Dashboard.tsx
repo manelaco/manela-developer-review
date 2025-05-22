@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../Logo';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,14 @@ import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { toast } from 'sonner';
 import { SidebarProvider, Sidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { addDays, startOfWeek, endOfWeek, format, isWithinInterval, parseISO } from 'date-fns';
+import { addDays, startOfWeek, endOfWeek, format, isWithinInterval, parseISO, isSameDay, isSameWeek } from 'date-fns';
+import { testSupabaseConnection } from '../../lib/db';
+import { toZonedTime } from 'date-fns-tz';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { EmployeeForm } from './EmployeeForm';
+import { Employee, getEmployees, addEmployee, updateEmployee, deleteEmployee, insertMockEmployees, getEmployeesForWeek } from '@/lib/db';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface OnboardingData {
   companyName?: string;
@@ -163,15 +170,135 @@ const news = [
   { title: 'State Bills Expand Family Leave', date: '10 May 2023', time: '3 min read' },
 ];
 
+const MONTREAL_TZ = 'America/Toronto';
+const getMontrealNow = () => toZonedTime(new Date(), MONTREAL_TZ);
+
+const formatDisplayDate = (date) => format(date, `MMM do '’'yy`);
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<OnboardingData>({});
   const [loading, setLoading] = useState(true);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isEmployeeSheetOpen, setIsEmployeeSheetOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [sidebarWeekStart, setSidebarWeekStart] = useState(() => startOfWeek(getMontrealNow(), { weekStartsOn: 1 }));
+  const queryClient = useQueryClient();
+
+  const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
+    queryKey: ['employees', sidebarWeekStart],
+    queryFn: () => getEmployeesForWeek(sidebarWeekStart),
+  });
+
+  const addEmployeeMutation = useMutation({
+    mutationFn: addEmployee,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setIsEmployeeSheetOpen(false);
+    },
+  });
+
+  const updateEmployeeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Employee> }) => updateEmployee(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setIsEmployeeSheetOpen(false);
+      setSelectedEmployee(null);
+    },
+  });
+
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: deleteEmployee,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setIsDeleteDialogOpen(false);
+      setSelectedEmployee(null);
+    },
+  });
+
+  const handleAddEmployee = () => {
+    setSelectedEmployee(null);
+    setIsEmployeeSheetOpen(true);
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsEmployeeSheetOpen(true);
+  };
+
+  const handleDeleteEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleEmployeeSubmit = async (formData: any) => {
+    try {
+      if (selectedEmployee) {
+        await updateEmployeeMutation.mutateAsync({ id: selectedEmployee.id!, data: formData });
+        toast.success('Employee updated successfully');
+      } else {
+        await addEmployeeMutation.mutateAsync(formData);
+        toast.success('Employee added successfully');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('An error occurred while saving the employee');
+      }
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (selectedEmployee?.id) {
+      await deleteEmployeeMutation.mutateAsync(selectedEmployee.id);
+    }
+  };
+
   const weekDays = getWeekDays(calendarDate);
   const weekStart = startOfWeek(calendarDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(calendarDate, { weekStartsOn: 1 });
+
+  const sidebarWeekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(sidebarWeekStart, i)), [sidebarWeekStart]);
+  const sidebarWeekEnd = endOfWeek(sidebarWeekStart, { weekStartsOn: 1 });
+  const todayMontreal = getMontrealNow();
+  const isCurrentWeek = isSameWeek(todayMontreal, sidebarWeekStart, { weekStartsOn: 1 });
+
+  const parsedEmployees = useMemo(() => employees.map(emp => ({
+    ...emp,
+    leaveDate: emp.leave_date ? parseISO(emp.leave_date) : null,
+    returnDate: emp.return_date ? parseISO(emp.return_date) : null,
+  })), [employees]);
+
+  const leavingThisWeek = useMemo(() => parsedEmployees.filter(emp =>
+    emp.leaveDate && isWithinInterval(emp.leaveDate, { start: sidebarWeekStart, end: sidebarWeekEnd })
+  ), [parsedEmployees, sidebarWeekStart, sidebarWeekEnd]);
+
+  const returningThisWeek = useMemo(() => parsedEmployees.filter(emp =>
+    emp.returnDate && isWithinInterval(emp.returnDate, { start: sidebarWeekStart, end: sidebarWeekEnd })
+  ), [parsedEmployees, sidebarWeekStart, sidebarWeekEnd]);
+
+  const currentlyOnLeave = useMemo(() => parsedEmployees.filter(emp =>
+    emp.leaveDate && emp.returnDate && emp.leaveDate <= sidebarWeekEnd && emp.returnDate >= sidebarWeekStart
+  ), [parsedEmployees, sidebarWeekStart, sidebarWeekEnd]);
+
+  const reintegrationTrack = useMemo(() => parsedEmployees.filter(emp =>
+    emp.status && emp.status.toUpperCase() === 'REINTEGRATION'
+  ), [parsedEmployees]);
+
+  const dayEventCounts = useMemo(() => sidebarWeekDays.map(day => {
+    const leavingCount = parsedEmployees.filter(emp => emp.leaveDate && isSameDay(emp.leaveDate, day)).length;
+    const returningCount = parsedEmployees.filter(emp => emp.returnDate && isSameDay(emp.returnDate, day)).length;
+    return { leaving: leavingCount, returning: returningCount };
+  }), [parsedEmployees, sidebarWeekDays]);
+
+  const [eventTab, setEventTab] = useState<'leaving'|'returning'|'onleave'|'reintegration'>('leaving');
+
+  const goToPrevWeek = useCallback(() => setSidebarWeekStart(prev => addDays(prev, -7)), []);
+  const goToNextWeek = useCallback(() => setSidebarWeekStart(prev => addDays(prev, 7)), []);
+  const goToCurrentWeek = useCallback(() => setSidebarWeekStart(startOfWeek(getMontrealNow(), { weekStartsOn: 1 })), []);
 
   useEffect(() => {
     // Retrieve user data from local storage
@@ -353,7 +480,15 @@ const Dashboard: React.FC = () => {
         </button>
 
         {/* Left Sidebar */}
-        <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 ${brandSidebar} flex flex-col py-8 px-4 transform transition-transform duration-200 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <aside className={
+          [
+            'w-64',
+            brandSidebar,
+            'flex flex-col py-8 px-4 z-40',
+            isMobileMenuOpen ? 'fixed inset-y-0 left-0 transform translate-x-0 transition-transform duration-200 ease-in-out' : 'fixed inset-y-0 left-0 -translate-x-full transition-transform duration-200 ease-in-out',
+            'lg:static lg:translate-x-0 lg:inset-y-auto lg:left-auto lg:transform-none lg:transition-none'
+          ].join(' ')
+        }>
           <div className="mb-10 flex items-center gap-2 px-2">
             <span className={`text-3xl font-bold ${brandColor} tracking-tight`}>manela</span>
           </div>
@@ -371,7 +506,7 @@ const Dashboard: React.FC = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen bg-white lg:ml-64 w-full">
+        <main className="flex-1 min-h-screen bg-white">
           {/* Header */}
           <header className="h-20 flex items-center border-b border-[#E5E3DF] px-4 md:px-8">
             <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
@@ -400,7 +535,28 @@ const Dashboard: React.FC = () => {
           <div className="px-4 md:px-8 pb-8">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Employees</h3>
-              <Button className="bg-black text-white px-5 py-2 rounded-lg text-sm font-semibold w-full lg:w-auto">+ Add New Employee</Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await insertMockEmployees();
+                      toast.success('Mock data inserted successfully');
+                      queryClient.invalidateQueries({ queryKey: ['employees'] });
+                    } catch (error) {
+                      toast.error('Failed to insert mock data');
+                    }
+                  }}
+                >
+                  Insert Mock Data
+                </Button>
+                <Button 
+                  className="bg-black text-white px-5 py-2 rounded-lg text-sm font-semibold w-full lg:w-auto"
+                  onClick={handleAddEmployee}
+                >
+                  + Add New Employee
+                </Button>
+              </div>
             </div>
             <div className="bg-white border border-[#E5E3DF] rounded-xl overflow-x-auto">
               <table className="w-full text-sm min-w-[800px]">
@@ -416,33 +572,33 @@ const Dashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.map((emp, i) => (
-                    <tr key={i} className="border-b border-[#F8F6F3] hover:bg-[#F8F6F3]">
-                      <td className="px-6 py-3 flex items-center gap-3">
-                        <Avatar className="h-8 w-8 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                  {employees.map((emp) => (
+                    <tr 
+                      key={emp.id} 
+                      className="border-b border-[#F8F6F3] hover:bg-[#F8F6F3] cursor-pointer transition-colors"
+                      onClick={() => handleEditEmployee(emp)}
+                    >
+                      <td className="px-6 py-3">
                         <span className="font-medium text-gray-900">{emp.name}</span>
                       </td>
-                      <td className="px-6 py-3 text-gray-700">{emp.job}</td>
-                      <td className="px-6 py-3 text-gray-700">{emp.leave}</td>
-                      <td className="px-6 py-3 text-gray-700">{emp.return}</td>
-                      <td className="px-6 py-3 text-gray-700">{emp.type}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.job_title}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.leave_date}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.return_date}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.leave_type}</td>
                       <td className="px-6 py-3">
-                        <Badge className={`px-3 py-1 rounded-full text-xs font-semibold ${emp.status === 'ACTIVE' ? 'bg-[#E6F7F1] text-[#1CA97A]' : emp.status === 'ON LEAVE' ? 'bg-[#F3F8FC] text-[#2A7FA8]' : 'bg-[#FCF6F3] text-[#A85B2A]'}`}>{emp.status}</Badge>
+                        <Badge className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          emp.status === 'ACTIVE' ? 'bg-[#E6F7F1] text-[#1CA97A]' : 
+                          emp.status === 'ON LEAVE' ? 'bg-[#F3F8FC] text-[#2A7FA8]' : 
+                          'bg-[#FCF6F3] text-[#A85B2A]'
+                        }`}>
+                          {emp.status}
+                        </Badge>
                       </td>
-                      <td className="px-6 py-3 text-gray-700">{emp.support}</td>
+                      <td className="px-6 py-3 text-gray-700">{emp.support_status}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {/* Pagination */}
-              <div className="flex items-center justify-between px-6 py-3 bg-[#F8F6F3] text-xs text-gray-500">
-                <div>Showing 1 to 8 of 8 employees</div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0"><ChevronLeft className="h-4 w-4" /></Button>
-                  <span className="px-2">1</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0"><ChevronRight className="h-4 w-4" /></Button>
-                </div>
-              </div>
             </div>
           </div>
         </main>
@@ -452,42 +608,74 @@ const Dashboard: React.FC = () => {
           {/* Calendar */}
           <div className="bg-[#F8F6F3] rounded-xl p-5 mb-2">
             <div className="flex items-center justify-between mb-4">
-              <span className="font-semibold text-gray-900">January 2024</span>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+              <span className="font-semibold text-gray-900">{format(sidebarWeekStart, 'MMMM yyyy')}</span>
+              <div className="flex gap-2 items-center">
+                {!isCurrentWeek && (
+                  <button onClick={goToCurrentWeek} className="p-1 rounded hover:bg-[#EDE6DE]" title="Back to today">
+                    <Calendar className="h-5 w-5 text-[#A85B2A]" />
+                  </button>
+                )}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevWeek}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextWeek}><ChevronRight className="h-4 w-4" /></Button>
               </div>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
               <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center">
-              {calendarDays.map(day => (
-                <div key={day} className={`py-1.5 rounded-lg ${day === today ? 'bg-[#A85B2A] text-white font-bold' : 'bg-white text-gray-900'}`}>{day}</div>
+              {sidebarWeekDays.map((day, idx) => (
+                <div key={idx} className={`py-1.5 rounded-lg relative ${isSameDay(day, todayMontreal) ? 'bg-[#A85B2A] text-white font-bold' : 'bg-white text-gray-900'}`}>
+                  {format(day, 'd')}
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Events */}
+          {/* Event Tabs */}
+          <div className="flex gap-2 mb-2">
+            <button className={`px-3 py-1 rounded ${eventTab==='leaving' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('leaving')}>Leaving</button>
+            <button className={`px-3 py-1 rounded ${eventTab==='returning' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('returning')}>Returning</button>
+            <button className={`px-3 py-1 rounded ${eventTab==='onleave' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('onleave')}>On Leave</button>
+            <button className={`px-3 py-1 rounded ${eventTab==='reintegration' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('reintegration')}>Reintegration</button>
+          </div>
           <div>
-            <div className="font-semibold text-gray-900 mb-2">Leaving this week</div>
-            {events.map((ev, i) => (
-              <div key={i} className={`flex items-center gap-3 rounded-lg px-3 py-2 mb-2 ${ev.color}`}>
-                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{ev.name.split(' ').map(n => n[0]).join('')}</Avatar>
+            {eventTab === 'leaving' && leavingThisWeek.length === 0 && <div className="text-gray-400 text-sm py-2">No employees leaving this week.</div>}
+            {eventTab === 'leaving' && leavingThisWeek.map((emp, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#F3F8FC] text-[#2A7FA8]">
+                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
                 <div className="flex-1">
-                  <div className="font-medium text-sm">{ev.name}</div>
-                  <div className="text-xs">{ev.date} · {ev.type}</div>
+                  <div className="font-medium text-sm">{emp.name}</div>
+                  <div className="text-xs">{formatDisplayDate(emp.leaveDate)} · {emp.type}</div>
                 </div>
               </div>
             ))}
-            <div className="font-semibold text-gray-900 mb-2 mt-4">Returning</div>
-            {returning.map((ret, i) => (
-              <div key={i} className={`flex items-center gap-3 rounded-lg px-3 py-2 mb-2 ${ret.color}`}>
-                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{ret.name.split(' ').map(n => n[0]).join('')}</Avatar>
+            {eventTab === 'returning' && returningThisWeek.length === 0 && <div className="text-gray-400 text-sm py-2">No employees returning this week.</div>}
+            {eventTab === 'returning' && returningThisWeek.map((emp, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#E6F7F1] text-[#1CA97A]">
+                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
                 <div className="flex-1">
-                  <div className="font-medium text-sm">{ret.name}</div>
-                  <div className="text-xs">{ret.date}</div>
-                  <div className="text-xs font-semibold text-[#1CA97A]">{ret.note}</div>
+                  <div className="font-medium text-sm">{emp.name}</div>
+                  <div className="text-xs">{formatDisplayDate(emp.returnDate)} · {emp.type}</div>
+                </div>
+              </div>
+            ))}
+            {eventTab === 'onleave' && currentlyOnLeave.length === 0 && <div className="text-gray-400 text-sm py-2">No employees on leave this week.</div>}
+            {eventTab === 'onleave' && currentlyOnLeave.map((emp, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#F8F6F3] text-gray-700">
+                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{emp.name}</div>
+                  <div className="text-xs">{formatDisplayDate(emp.leaveDate)} - {formatDisplayDate(emp.returnDate)} · {emp.type}</div>
+                </div>
+              </div>
+            ))}
+            {eventTab === 'reintegration' && reintegrationTrack.length === 0 && <div className="text-gray-400 text-sm py-2">No employees on reintegration track.</div>}
+            {eventTab === 'reintegration' && reintegrationTrack.map((emp, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#FCF6F3] text-[#A85B2A]">
+                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{emp.name}</div>
+                  <div className="text-xs">{formatDisplayDate(emp.leaveDate)} - {formatDisplayDate(emp.returnDate)} · {emp.type}</div>
                 </div>
               </div>
             ))}
@@ -518,6 +706,46 @@ const Dashboard: React.FC = () => {
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
+
+        {/* Employee Form Sheet */}
+        <Sheet open={isEmployeeSheetOpen} onOpenChange={setIsEmployeeSheetOpen}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>{selectedEmployee ? 'Employee Details' : 'Add New Employee'}</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              <EmployeeForm
+                employee={selectedEmployee || undefined}
+                onSubmit={handleEmployeeSubmit}
+                onCancel={() => {
+                  setIsEmployeeSheetOpen(false);
+                  setSelectedEmployee(null);
+                }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the employee record.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SidebarProvider>
   );

@@ -13,8 +13,26 @@ const Index = () => {
     navigate('/onboarding/step-one');
   };
 
-  const goToDashboard = () => {
+  const goToLogin = () => {
+    // Add mock data for development
+    localStorage.setItem('onboardingData', JSON.stringify({
+      fullName: 'Test User',
+      companyEmail: 'test@company.com',
+      companyName: 'Test Company',
+      preferredDomain: 'test',
+      companySize: '51-100',
+      industry: 'Technology',
+      role: 'HR Manager',
+      tenant: 'hr',
+      resources: ['legal', 'tracking', 'templates']
+    }));
     navigate('/dashboard');
+  };
+
+  const goToSignup = () => {
+    // Clear any previous onboarding data
+    localStorage.removeItem('onboardingData');
+    navigate('/onboarding/step-one');
   };
 
   return (
@@ -23,11 +41,11 @@ const Index = () => {
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Logo />
           <div className="flex gap-4">
-            <Button onClick={goToDashboard} variant="outline" className="border-manela text-manela hover:bg-manela hover:text-white">
-              Go to Dashboard
+            <Button onClick={goToLogin} variant="ghost" className="text-gray-600 hover:text-manela">
+              Login
             </Button>
-            <Button onClick={startOnboarding} className="bg-manela hover:bg-manela-dark">
-              Get Started
+            <Button onClick={goToSignup} variant="outline" className="border-manela text-manela hover:bg-manela hover:text-white">
+              Create Account
             </Button>
           </div>
         </div>

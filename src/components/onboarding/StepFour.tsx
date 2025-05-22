@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import ProgressIndicator from '../ProgressIndicator';
 import { toast } from 'sonner';
+import { saveOnboardingData } from '@/lib/db';
 
 interface ResourceOption {
   id: string;
@@ -68,16 +69,35 @@ const StepFour: React.FC = () => {
     ));
   };
 
-  const handleComplete = () => {
-    // Store final selections
-    localStorage.setItem('onboardingData', JSON.stringify({
-      ...JSON.parse(localStorage.getItem('onboardingData') || '{}'),
-      resources: resourceOptions.filter(resource => resource.selected).map(resource => resource.id),
-      tenant: 'hr', // Ensure user is tagged as HR tenant
-    }));
-    
-    toast.success('Onboarding completed successfully!');
-    navigate('/dashboard');
+  const handleComplete = async () => {
+    try {
+      // Get all onboarding data from localStorage
+      const onboardingData = JSON.parse(localStorage.getItem('onboardingData') || '{}');
+      
+      // Save to database
+      await saveOnboardingData({
+        company_name: onboardingData.companyName || '',
+        preferred_domain: onboardingData.preferredDomain || '',
+        company_size: onboardingData.companySize || '',
+        industry: onboardingData.industry || '',
+        role: onboardingData.role || '',
+        tenant: 'Company',
+        resources: resourceOptions.filter(resource => resource.selected).map(resource => resource.id),
+      });
+      
+      // Store final selections in localStorage
+      localStorage.setItem('onboardingData', JSON.stringify({
+        ...onboardingData,
+        resources: resourceOptions.filter(resource => resource.selected).map(resource => resource.id),
+        tenant: 'Company',
+      }));
+      
+      toast.success('Onboarding completed successfully!');
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error saving onboarding data:', error);
+      toast.error('Failed to save onboarding data. Please try again.');
+    }
   };
 
   const goBack = () => {
