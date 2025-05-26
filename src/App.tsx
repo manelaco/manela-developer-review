@@ -11,8 +11,11 @@ import StepTwo from "./components/onboarding/StepTwo";
 import StepThree from "./components/onboarding/StepThree";
 import StepFour from "./components/onboarding/StepFour";
 import Dashboard from "./components/dashboard/Dashboard";
+import SuperAdminDashboard from "./components/superadmin/SuperAdminDashboard";
 import { useEffect } from 'react';
 import { testSupabaseConnection } from './lib/db';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const queryClient = new QueryClient();
 
@@ -27,21 +30,39 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            
-            <Route path="/onboarding" element={<OnboardingLayout />}>
-              <Route index element={<Navigate to="step-one" replace />} />
-              <Route path="step-one" element={<StepOne />} />
-              <Route path="step-two" element={<StepTwo />} />
-              <Route path="step-three" element={<StepThree />} />
-              <Route path="step-four" element={<StepFour />} />
-            </Route>
-            
-            <Route path="/dashboard" element={<Dashboard />} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              
+              <Route path="/onboarding" element={<OnboardingLayout />}>
+                <Route index element={<Navigate to="step-one" replace />} />
+                <Route path="step-one" element={<StepOne />} />
+                <Route path="step-two" element={<StepTwo />} />
+                <Route path="step-three" element={<StepThree />} />
+                <Route path="step-four" element={<StepFour />} />
+              </Route>
+              
+              <Route 
+                path="/dashboard/*" 
+                element={
+                  <ProtectedRoute allowedRoles={['hr_admin', 'employee']}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/superadmin/*" 
+                element={
+                  <ProtectedRoute allowedRoles={['superadmin']}>
+                    <SuperAdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

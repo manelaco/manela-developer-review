@@ -38,6 +38,8 @@ import {
   Security as SecurityIcon,
   Storage as StorageIcon
 } from '@mui/icons-material';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 // Mock data for demonstration
 const mockStats = {
@@ -59,9 +61,22 @@ const SuperAdminDashboard: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, viewAsCompany, stopViewingAsCompany, viewedCompanyId } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleViewAsCompany = (companyId: string) => {
+    viewAsCompany(companyId);
+    toast.success('Viewing as company');
+    // Log this action
+    console.log(`Superadmin ${user?.email} viewing as company ${companyId}`);
+  };
+
+  const handleStopViewingAsCompany = () => {
+    stopViewingAsCompany();
+    toast.success('Stopped viewing as company');
   };
 
   const menuItems = [
@@ -134,6 +149,15 @@ const SuperAdminDashboard: React.FC = () => {
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Super Admin Dashboard
+            {viewedCompanyId && (
+              <Chip
+                label={`Viewing as Company ${viewedCompanyId}`}
+                color="primary"
+                size="small"
+                onDelete={handleStopViewingAsCompany}
+                sx={{ ml: 2 }}
+              />
+            )}
           </Typography>
           <IconButton color="inherit">
             <NotificationsIcon />
@@ -335,6 +359,34 @@ const SuperAdminDashboard: React.FC = () => {
                       >
                         System Status
                       </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+
+                {/* Add View as Company section */}
+                <Card sx={{ mb: 3 }}>
+                  <CardHeader title="View as Company" />
+                  <CardContent>
+                    <Box sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2, 1fr)',
+                        md: 'repeat(3, 1fr)'
+                      },
+                      gap: 2
+                    }}>
+                      {mockStats.totalCompanies > 0 && (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          startIcon={<BusinessIcon />}
+                          onClick={() => handleViewAsCompany('1')}
+                        >
+                          View as Company 1
+                        </Button>
+                      )}
+                      {/* Add more company buttons as needed */}
                     </Box>
                   </CardContent>
                 </Card>

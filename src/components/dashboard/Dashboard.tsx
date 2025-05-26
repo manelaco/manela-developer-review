@@ -43,6 +43,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { EmployeeForm } from './EmployeeForm';
 import { Employee, getEmployees, addEmployee, updateEmployee, deleteEmployee, insertMockEmployees, getEmployeesForWeek } from '@/lib/db';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OnboardingData {
   companyName?: string;
@@ -186,6 +187,7 @@ const Dashboard: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sidebarWeekStart, setSidebarWeekStart] = useState(() => startOfWeek(getMontrealNow(), { weekStartsOn: 1 }));
   const queryClient = useQueryClient();
+  const { user, isSuperadmin, viewedCompanyId } = useAuth();
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ['employees', sidebarWeekStart],
@@ -491,6 +493,11 @@ const Dashboard: React.FC = () => {
         }>
           <div className="mb-10 flex items-center gap-2 px-2">
             <span className={`text-3xl font-bold ${brandColor} tracking-tight`}>manela</span>
+            {isSuperadmin && viewedCompanyId && (
+              <Badge className="ml-2 bg-[#EDE6DE] text-[#A85B2A] px-2 py-1 rounded text-xs">
+                Viewing as Company
+              </Badge>
+            )}
           </div>
           <nav className="flex flex-col gap-1">
             {navItems.map((item, i) => (
@@ -508,8 +515,17 @@ const Dashboard: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 min-h-screen bg-white">
           {/* Header */}
-          <header className="h-20 flex items-center border-b border-[#E5E3DF] px-4 md:px-8">
+          <header className="h-20 flex items-center justify-between border-b border-[#E5E3DF] px-4 md:px-8">
             <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+            {isSuperadmin && viewedCompanyId && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/superadmin')}
+                className="text-[#A85B2A] border-[#A85B2A] hover:bg-[#EDE6DE]"
+              >
+                Exit Company View
+              </Button>
+            )}
           </header>
 
           {/* Welcome */}
