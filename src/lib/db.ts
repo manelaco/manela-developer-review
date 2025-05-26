@@ -286,4 +286,162 @@ export const validateEmployeeDates = (employee: Partial<Employee>) => {
     }
   }
   return true;
+};
+
+export interface Content {
+  id: string;
+  title: string;
+  type: 'article' | 'resource' | 'policy' | 'template';
+  content: string;
+  status: 'draft' | 'published' | 'archived';
+  category: string;
+  tags: string[];
+  author_id: string;
+  company_id?: string; // null means available to all companies
+  created_at: string;
+  updated_at: string;
+  published_at?: string;
+  metadata?: {
+    readTime?: number;
+    featured?: boolean;
+    priority?: number;
+    targetRoles?: ('hr_admin' | 'employee')[];
+  };
+}
+
+export interface ContentCategory {
+  id: string;
+  name: string;
+  description: string;
+  parent_id?: string;
+  created_at: string;
+}
+
+export interface ContentTag {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+// Content Management Functions
+export const getContent = async (filters?: {
+  type?: Content['type'];
+  status?: Content['status'];
+  category?: string;
+  company_id?: string;
+  search?: string;
+}) => {
+  try {
+    let query = supabase
+      .from('content')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (filters?.type) {
+      query = query.eq('type', filters.type);
+    }
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.category) {
+      query = query.eq('category', filters.category);
+    }
+    if (filters?.company_id) {
+      query = query.eq('company_id', filters.company_id);
+    }
+    if (filters?.search) {
+      query = query.ilike('title', `%${filters.search}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data as Content[];
+  } catch (error) {
+    console.error('Error fetching content:', error);
+    throw error;
+  }
+};
+
+export const createContent = async (content: Omit<Content, 'id' | 'created_at' | 'updated_at'>) => {
+  try {
+    const { data, error } = await supabase
+      .from('content')
+      .insert([{
+        ...content,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Content;
+  } catch (error) {
+    console.error('Error creating content:', error);
+    throw error;
+  }
+};
+
+export const updateContent = async (id: string, updates: Partial<Content>) => {
+  try {
+    const { data, error } = await supabase
+      .from('content')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Content;
+  } catch (error) {
+    console.error('Error updating content:', error);
+    throw error;
+  }
+};
+
+export const deleteContent = async (id: string) => {
+  try {
+    const { error } = await supabase
+      .from('content')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting content:', error);
+    throw error;
+  }
+};
+
+export const getCategories = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('content_categories')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+    return data as ContentCategory[];
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    throw error;
+  }
+};
+
+export const getTags = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('content_tags')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+    return data as ContentTag[];
+  } catch (error) {
+    console.error('Error fetching tags:', error);
+    throw error;
+  }
 }; 

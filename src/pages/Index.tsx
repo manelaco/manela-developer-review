@@ -3,9 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
 import { Users, FileText, BookOpen, MessageCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const startOnboarding = () => {
     // Clear any previous onboarding data
@@ -13,20 +15,12 @@ const Index = () => {
     navigate('/onboarding/step-one');
   };
 
-  const goToLogin = () => {
-    // Add mock data for development
-    localStorage.setItem('onboardingData', JSON.stringify({
-      fullName: 'Test User',
-      companyEmail: 'test@company.com',
-      companyName: 'Test Company',
-      preferredDomain: 'test',
-      companySize: '51-100',
-      industry: 'Technology',
-      role: 'HR Manager',
-      tenant: 'hr',
-      resources: ['legal', 'tracking', 'templates']
-    }));
-    navigate('/dashboard');
+  const goToLogin = async () => {
+    try {
+      await login('admin@manela', 'manela');
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
   };
 
   const goToSignup = () => {

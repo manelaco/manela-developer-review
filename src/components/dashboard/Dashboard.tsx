@@ -44,6 +44,11 @@ import { EmployeeForm } from './EmployeeForm';
 import { Employee, getEmployees, addEmployee, updateEmployee, deleteEmployee, insertMockEmployees, getEmployeesForWeek } from '@/lib/db';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import ContentDisplay from './ContentDisplay';
+import { Box } from '@mui/material';
+import { Tabs, Tab } from '@mui/material';
+import Overview from './Overview';
+import EmployeeManagement from './EmployeeManagement';
 
 interface OnboardingData {
   companyName?: string;
@@ -188,6 +193,7 @@ const Dashboard: React.FC = () => {
   const [sidebarWeekStart, setSidebarWeekStart] = useState(() => startOfWeek(getMontrealNow(), { weekStartsOn: 1 }));
   const queryClient = useQueryClient();
   const { user, isSuperadmin, viewedCompanyId } = useAuth();
+  const [activeTab, setActiveTab] = useState('overview');
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ['employees', sidebarWeekStart],
@@ -469,6 +475,19 @@ const Dashboard: React.FC = () => {
   const domain = data.preferredDomain ? `${data.preferredDomain}.manela.com` : 'yourdomain.manela.com';
   const userInitials = data.role?.split(' ').map(name => name[0]).join('') || 'HR';
   const resourceCards = getResourceCards();
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <Overview />;
+      case 'content':
+        return <ContentDisplay />;
+      case 'employees':
+        return <EmployeeManagement />;
+      default:
+        return <Overview />;
+    }
+  };
 
   return (
     <SidebarProvider>

@@ -21,7 +21,9 @@ import {
   Button,
   Chip,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Tabs,
+  Tab
 } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import type { SxProps } from '@mui/system';
@@ -36,10 +38,17 @@ import {
   AccountCircle as AccountCircleIcon,
   TrendingUp as TrendingUpIcon,
   Security as SecurityIcon,
-  Storage as StorageIcon
+  Storage as StorageIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import ContentManagement from './ContentManagement';
+import Overview from './Overview';
+import CompanyManagement from './CompanyManagement';
+import UserManagement from './UserManagement';
+import Settings from './Settings';
+import OnboardingManagement from './OnboardingManagement';
 
 // Mock data for demonstration
 const mockStats = {
@@ -62,6 +71,7 @@ const SuperAdminDashboard: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, viewAsCompany, stopViewingAsCompany, viewedCompanyId } = useAuth();
+  const [activeTab, setActiveTab] = useState('overview');
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -83,6 +93,7 @@ const SuperAdminDashboard: React.FC = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/superadmin' },
     { text: 'Companies', icon: <BusinessIcon />, path: '/superadmin/companies' },
     { text: 'Users', icon: <PeopleIcon />, path: '/superadmin/users' },
+    { text: 'Onboarding', icon: <AssignmentIcon />, path: '/superadmin/onboarding' },
     { text: 'API Keys', icon: <SecurityIcon />, path: '/superadmin/api-keys' },
     { text: 'System', icon: <StorageIcon />, path: '/superadmin/system' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/superadmin/settings' }
@@ -124,6 +135,25 @@ const SuperAdminDashboard: React.FC = () => {
       </List>
     </Box>
   );
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <Overview />;
+      case 'companies':
+        return <CompanyManagement />;
+      case 'content':
+        return <ContentManagement />;
+      case 'users':
+        return <UserManagement />;
+      case 'onboarding':
+        return <OnboardingManagement />;
+      case 'settings':
+        return <Settings />;
+      default:
+        return <Overview />;
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -207,198 +237,19 @@ const SuperAdminDashboard: React.FC = () => {
           mt: 8
         }}
       >
-        <Container maxWidth="lg">
-          <Routes>
-            <Route path="/" element={
-              <>
-                <Box sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    md: 'repeat(4, 1fr)'
-                  },
-                  gap: 3,
-                  mb: 3
-                }}>
-                  {/* Stats Cards */}
-                  <Card>
-                    <CardContent>
-                      <Typography color="textSecondary" gutterBottom>
-                        Total Companies
-                      </Typography>
-                      <Typography variant="h4">
-                        {mockStats.totalCompanies}
-                      </Typography>
-                      <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                        +12% from last month
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent>
-                      <Typography color="textSecondary" gutterBottom>
-                        Active Users
-                      </Typography>
-                      <Typography variant="h4">
-                        {mockStats.activeUsers}
-                      </Typography>
-                      <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                        +8% from last month
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent>
-                      <Typography color="textSecondary" gutterBottom>
-                        Pending Approvals
-                      </Typography>
-                      <Typography variant="h4">
-                        {mockStats.pendingApprovals}
-                      </Typography>
-                      <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
-                        Requires attention
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent>
-                      <Typography color="textSecondary" gutterBottom>
-                        System Health
-                      </Typography>
-                      <Typography variant="h4">
-                        {mockStats.systemHealth}
-                      </Typography>
-                      <Chip 
-                        label="All Systems Operational" 
-                        color="success" 
-                        size="small" 
-                        sx={{ mt: 1 }}
-                      />
-                    </CardContent>
-                  </Card>
-                </Box>
-
-                {/* Recent Activity */}
-                <Card sx={{ mb: 3 }}>
-                  <CardHeader 
-                    title="Recent Activity"
-                    action={
-                      <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        size="small"
-                      >
-                        New Company
-                      </Button>
-                    }
-                  />
-                  <CardContent>
-                    <List>
-                      {mockRecentActivity.map((activity) => (
-                        <ListItem key={activity.id} divider>
-                          <ListItemIcon>
-                            <Avatar sx={{ bgcolor: 'primary.main' }}>
-                              <BusinessIcon />
-                            </Avatar>
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={activity.action}
-                            secondary={`${activity.company} • ${activity.time}`}
-                          />
-                          <Button size="small" variant="outlined">
-                            View Details
-                          </Button>
-                        </ListItem>
-                      ))}
-                    </List>
-                  </CardContent>
-                </Card>
-
-                {/* Quick Actions */}
-                <Card>
-                  <CardHeader title="Quick Actions" />
-                  <CardContent>
-                    <Box sx={{
-                      display: 'grid',
-                      gridTemplateColumns: {
-                        xs: '1fr',
-                        sm: 'repeat(2, 1fr)',
-                        md: 'repeat(4, 1fr)'
-                      },
-                      gap: 2
-                    }}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<BusinessIcon />}
-                        onClick={() => navigate('/superadmin/companies')}
-                      >
-                        Manage Companies
-                      </Button>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<PeopleIcon />}
-                        onClick={() => navigate('/superadmin/users')}
-                      >
-                        Manage Users
-                      </Button>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<SecurityIcon />}
-                        onClick={() => navigate('/superadmin/api-keys')}
-                      >
-                        API Keys
-                      </Button>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<StorageIcon />}
-                        onClick={() => navigate('/superadmin/system')}
-                      >
-                        System Status
-                      </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
-
-                {/* Add View as Company section */}
-                <Card sx={{ mb: 3 }}>
-                  <CardHeader title="View as Company" />
-                  <CardContent>
-                    <Box sx={{
-                      display: 'grid',
-                      gridTemplateColumns: {
-                        xs: '1fr',
-                        sm: 'repeat(2, 1fr)',
-                        md: 'repeat(3, 1fr)'
-                      },
-                      gap: 2
-                    }}>
-                      {mockStats.totalCompanies > 0 && (
-                        <Button
-                          fullWidth
-                          variant="outlined"
-                          startIcon={<BusinessIcon />}
-                          onClick={() => handleViewAsCompany('1')}
-                        >
-                          View as Company 1
-                        </Button>
-                      )}
-                      {/* Add more company buttons as needed */}
-                    </Box>
-                  </CardContent>
-                </Card>
-              </>
-            } />
-            <Route path="/companies" element={<div>Companies Management</div>} />
-            <Route path="/users" element={<div>Users Management</div>} />
-            <Route path="/api-keys" element={<div>API Keys Management</div>} />
-            <Route path="/system" element={<div>System Status</div>} />
-            <Route path="/settings" element={<div>Settings</div>} />
-          </Routes>
-        </Container>
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{ mb: 3 }}
+        >
+          <Tab label="Overview" value="overview" />
+          <Tab label="Companies" value="companies" />
+          <Tab label="Content" value="content" />
+          <Tab label="Users" value="users" />
+          <Tab label="Onboarding" value="onboarding" />
+          <Tab label="Settings" value="settings" />
+        </Tabs>
+        {renderContent()}
       </Box>
     </Box>
   );

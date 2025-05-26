@@ -50,25 +50,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // TODO: Implement actual authentication with your backend
       // For now, we'll use mock data
-      const mockUser: User = {
-        id: '1',
-        email,
-        role: email.includes('admin@manela.com') ? 'superadmin' : 'hr_admin',
-        companyId: email.includes('admin@manela.com') ? undefined : '1',
-        companyName: email.includes('admin@manela.com') ? undefined : 'Test Company',
-        fullName: 'Test User'
-      };
+      if (email === 'admin@manela' && password === 'manela') {
+        const mockUser: User = {
+          id: '1',
+          email,
+          role: 'superadmin',
+          fullName: 'Super Admin'
+        };
 
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      // Redirect based on role
-      if (mockUser.role === 'superadmin') {
+        setUser(mockUser);
+        localStorage.setItem('user', JSON.stringify(mockUser));
         navigate('/superadmin');
       } else {
-        navigate('/dashboard');
+        throw new Error('Invalid credentials');
       }
     } catch (error) {
       toast.error('Login failed. Please try again.');

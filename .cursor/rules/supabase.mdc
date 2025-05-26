@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+always refer to the current supabase database and schema before suggesting any changes.
+always ensure changes to the database schema in supabase do not negatively affect other tables
+always ensure suggestions made are validated by the current database schema
+always ensure all supabase SQL is written in proper postgreSQL syntax for supabase
