@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import ProgressIndicator from '../ProgressIndicator';
 import { toast } from 'sonner';
-import { saveOnboardingData } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 interface ResourceOption {
   id: string;
@@ -71,27 +71,63 @@ const StepFour: React.FC = () => {
 
   const handleComplete = async () => {
     try {
-      // Get all onboarding data from localStorage
       const onboardingData = JSON.parse(localStorage.getItem('onboardingData') || '{}');
-      
-      // Save to database
-      await saveOnboardingData({
-        company_name: onboardingData.companyName || '',
-        preferred_domain: onboardingData.preferredDomain || '',
-        company_size: onboardingData.companySize || '',
-        industry: onboardingData.industry || '',
-        role: onboardingData.role || '',
-        tenant: 'Company',
-        resources: resourceOptions.filter(resource => resource.selected).map(resource => resource.id),
-      });
-      
-      // Store final selections in localStorage
-      localStorage.setItem('onboardingData', JSON.stringify({
-        ...onboardingData,
-        resources: resourceOptions.filter(resource => resource.selected).map(resource => resource.id),
-        tenant: 'Company',
-      }));
-      
+      const user = supabase.auth.user(); // For Supabase v1
+      // For Supabase v2: const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error('User not authenticated.');
+        return;
+      }
+
+      // 1. Create the company
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .insert([{
+          name: onboardingData.companyName,
+          domain: onboardingData.preferredDomain,
+          company_size: onboardingData.companySize,
+          industry: onboardingData.industry,
+          status: 'pending'
+        }])
+        .select()
+        .single();
+
+      if (companyError) throw companyError;
+
+      // 2. Link the user profile to the company
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({ company_id: company.id })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      // 3. Save onboarding data
+      const { data: onboarding, error: onboardingError } = await supabase
+        .from('onboarding_users')
+        .insert([{
+          user_id: user.id,
+          company_id: company.id,
+          company_name: onboardingData.companyName,
+          preferred_domain: onboardingData.preferredDomain,
+          company_size: onboardingData.companySize,
+          industry: onboardingData.industry,
+          role: onboardingData.role,
+          tenant: 'Company',
+          resources: resourceOptions.filter(resource => resource.selected).map(resource => resource.id),
+        }])
+        .select()
+        .single();
+
+      if (onboardingError) throw onboardingError;
+
+      // 4. Optionally, update the company with onboarding_user_id
+      await supabase
+        .from('companies')
+        .update({ onboarding_user_id: onboarding.id })
+        .eq('id', company.id);
+
       toast.success('Onboarding completed successfully!');
       navigate('/dashboard');
     } catch (error) {

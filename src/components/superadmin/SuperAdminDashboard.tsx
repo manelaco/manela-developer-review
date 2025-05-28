@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
 import { 
   Box, 
   Drawer, 
@@ -49,6 +49,7 @@ import CompanyManagement from './CompanyManagement';
 import UserManagement from './UserManagement';
 import Settings from './Settings';
 import OnboardingManagement from './OnboardingManagement';
+import { createTestCompanies, createTestContent } from '@/lib/db';
 
 // Mock data for demonstration
 const mockStats = {
@@ -67,18 +68,31 @@ const mockRecentActivity = [
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, viewAsCompany, stopViewingAsCompany, viewedCompanyId } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Update active tab based on current route
+  useEffect(() => {
+    const path = location.pathname.split('/').pop() || 'overview';
+    setActiveTab(path);
+  }, [location]);
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setActiveTab(newValue);
+    navigate(`/superadmin/${newValue}`);
+  };
+
   const handleViewAsCompany = (companyId: string) => {
     viewAsCompany(companyId);
+    navigate('/dashboard');
     toast.success('Viewing as company');
     // Log this action
     console.log(`Superadmin ${user?.email} viewing as company ${companyId}`);
@@ -89,11 +103,21 @@ const SuperAdminDashboard: React.FC = () => {
     toast.success('Stopped viewing as company');
   };
 
+  const handleCreateTestData = async () => {
+    try {
+      const companies = await createTestCompanies();
+      await createTestContent(companies);
+      toast.success('Test data created successfully');
+    } catch (error) {
+      console.error('Error creating test data:', error);
+      toast.error('Failed to create test data');
+    }
+  };
+
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/superadmin' },
     { text: 'Companies', icon: <BusinessIcon />, path: '/superadmin/companies' },
-    { text: 'Users', icon: <PeopleIcon />, path: '/superadmin/users' },
-    { text: 'Onboarding', icon: <AssignmentIcon />, path: '/superadmin/onboarding' },
+    { text: 'LMS', icon: <StorageIcon />, path: '/superadmin/lms' },
     { text: 'API Keys', icon: <SecurityIcon />, path: '/superadmin/api-keys' },
     { text: 'System', icon: <StorageIcon />, path: '/superadmin/system' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/superadmin/settings' }
@@ -139,15 +163,25 @@ const SuperAdminDashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <Overview />;
+        return (
+          <Box>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleCreateTestData}
+              sx={{ mb: 3 }}
+            >
+              Create Test Data
+            </Button>
+            <Overview />
+          </Box>
+        );
       case 'companies':
         return <CompanyManagement />;
       case 'content':
         return <ContentManagement />;
-      case 'users':
-        return <UserManagement />;
-      case 'onboarding':
-        return <OnboardingManagement />;
+      case 'lms':
+        return <ContentManagement />;
       case 'settings':
         return <Settings />;
       default:
@@ -239,14 +273,13 @@ const SuperAdminDashboard: React.FC = () => {
       >
         <Tabs
           value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
+          onChange={handleTabChange}
           sx={{ mb: 3 }}
         >
           <Tab label="Overview" value="overview" />
           <Tab label="Companies" value="companies" />
           <Tab label="Content" value="content" />
-          <Tab label="Users" value="users" />
-          <Tab label="Onboarding" value="onboarding" />
+          <Tab label="LMS" value="lms" />
           <Tab label="Settings" value="settings" />
         </Tabs>
         {renderContent()}

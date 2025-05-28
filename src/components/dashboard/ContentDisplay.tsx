@@ -28,7 +28,7 @@ import {
   Bookmark as BookmarkIcon,
   BookmarkBorder as BookmarkBorderIcon
 } from '@mui/icons-material';
-import { getContent } from '@/lib/db';
+import { getContent, incrementContentView } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { Content } from '@/lib/db';
 
@@ -75,8 +75,13 @@ const ContentDisplay: React.FC = () => {
     }
   };
 
-  const handleViewContent = (content: Content) => {
+  const handleViewContent = async (content: Content) => {
     setSelectedContent(content);
+    try {
+      await incrementContentView(content.id);
+    } catch (e) {
+      // Optionally handle error
+    }
   };
 
   return (

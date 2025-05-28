@@ -49,6 +49,8 @@ import { Box } from '@mui/material';
 import { Tabs, Tab } from '@mui/material';
 import Overview from './Overview';
 import EmployeeManagement from './EmployeeManagement';
+import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import OnboardingOverlay from '@/components/onboarding/OnboardingOverlay';
 
 interface OnboardingData {
   companyName?: string;
@@ -194,6 +196,8 @@ const Dashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const { user, isSuperadmin, viewedCompanyId } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const { company_id } = useUserProfile(); // adjust as needed for your user profile context
+  const onboardingComplete = useOnboardingStatus(user?.id, company_id);
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ['employees', sidebarWeekStart],
@@ -463,6 +467,13 @@ const Dashboard: React.FC = () => {
       </div>
     </div>
   );
+
+  if (onboardingComplete === null) {
+    return <div className="min-h-screen flex items-center justify-center">Checking onboarding status...</div>;
+  }
+  if (onboardingComplete === false) {
+    return <OnboardingOverlay />;
+  }
 
   if (loading) {
     return (

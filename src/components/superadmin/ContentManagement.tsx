@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Box, 
@@ -19,13 +19,20 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  Autocomplete
+  Autocomplete,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow
 } from '@mui/material';
 import { 
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Visibility as ViewIcon
+  Visibility as ViewIcon,
+  History as HistoryIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { 
   Content, 
@@ -36,7 +43,11 @@ import {
   updateContent, 
   deleteContent,
   getCategories,
-  getTags
+  getTags,
+  getCompanies,
+  Company,
+  ContentAuditLog,
+  getContentAuditLogs
 } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -51,6 +62,17 @@ const ContentManagement: React.FC = () => {
     status: '',
     category: '',
     search: ''
+  });
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [targetMode, setTargetMode] = useState<'all' | 'only' | 'allExcept'>('all');
+  const [targetCompanyIds, setTargetCompanyIds] = useState<string[]>([]);
+  const [showAuditLogs, setShowAuditLogs] = useState(false);
+  const [selectedContentForAudit, setSelectedContentForAudit] = useState<Content | null>(null);
+  const [auditLogs, setAuditLogs] = useState<ContentAuditLog[]>([]);
+  const [auditFilters, setAuditFilters] = useState({
+    start_date: '',
+    end_date: '',
+    action: ''
   });
 
   // Fetch content
@@ -69,6 +91,10 @@ const ContentManagement: React.FC = () => {
     queryKey: ['tags'],
     queryFn: getTags
   });
+
+  useEffect(() => {
+    getCompanies().then(setCompanies);
+  }, []);
 
   // Mutations
   const createMutation = useMutation({
@@ -114,14 +140,43 @@ const ContentManagement: React.FC = () => {
     }
   };
 
+  const handleViewAuditLogs = async (content: Content) => {
+    setSelectedContentForAudit(content);
+    setShowAuditLogs(true);
+    try {
+      const logs = await getContentAuditLogs({
+        content_id: content.id,
+        ...auditFilters
+      });
+      setAuditLogs(logs);
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      toast.error('Failed to fetch audit logs');
+    }
+  };
+
+  const handleAuditFilterChange = async () => {
+    if (!selectedContentForAudit) return;
+    try {
+      const logs = await getContentAuditLogs({
+        content_id: selectedContentForAudit.id,
+        ...auditFilters
+      });
+      setAuditLogs(logs);
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      toast.error('Failed to fetch audit logs');
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const contentData = {
       title: formData.get('title') as string,
-      type: formData.get('type') as Content['type'],
+      type: formData.get('type') as any,
       content: formData.get('content') as string,
-      status: formData.get('status') as Content['status'],
+      status: formData.get('status') as any,
       category: formData.get('category') as string,
       tags: formData.getAll('tags') as string[],
       author_id: user?.id || '',
@@ -129,7 +184,11 @@ const ContentManagement: React.FC = () => {
         readTime: parseInt(formData.get('readTime') as string) || undefined,
         featured: formData.get('featured') === 'true',
         priority: parseInt(formData.get('priority') as string) || undefined,
-        targetRoles: formData.getAll('targetRoles') as ('hr_admin' | 'employee')[]
+        targetRoles: formData.getAll('targetRoles') as ('hr_admin' | 'employee')[],
+        targetCompanies: {
+          mode: targetMode,
+          companyIds: targetCompanyIds
+        }
       }
     };
 
@@ -175,10 +234,9 @@ const ContentManagement: React.FC = () => {
                   onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
                 >
                   <MenuItem value="">All</MenuItem>
+                  <MenuItem value="blog">Blog</MenuItem>
                   <MenuItem value="article">Article</MenuItem>
-                  <MenuItem value="resource">Resource</MenuItem>
-                  <MenuItem value="policy">Policy</MenuItem>
-                  <MenuItem value="template">Template</MenuItem>
+                  <MenuItem value="video">Video</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -242,6 +300,9 @@ const ContentManagement: React.FC = () => {
                         </Box>
                       </Box>
                       <Box>
+                        <IconButton onClick={() => handleViewAuditLogs(item)}>
+                          <HistoryIcon />
+                        </IconButton>
                         <IconButton onClick={() => handleEdit(item)}>
                           <EditIcon />
                         </IconButton>
@@ -257,6 +318,134 @@ const ContentManagement: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Audit Logs Dialog */}
+      <Dialog
+        open={showAuditLogs}
+        onClose={() => setShowAuditLogs(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Audit Logs - {selectedContentForAudit?.title}
+            </Typography>
+            <IconButton onClick={() => setShowAuditLogs(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 3 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Start Date"
+                  value={auditFilters.start_date}
+                  onChange={(e) => {
+                    setAuditFilters(prev => ({ ...prev, start_date: e.target.value }));
+                    handleAuditFilterChange();
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="End Date"
+                  value={auditFilters.end_date}
+                  onChange={(e) => {
+                    setAuditFilters(prev => ({ ...prev, end_date: e.target.value }));
+                    handleAuditFilterChange();
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Action</InputLabel>
+                  <Select
+                    value={auditFilters.action}
+                    label="Action"
+                    onChange={(e) => {
+                      setAuditFilters(prev => ({ ...prev, action: e.target.value }));
+                      handleAuditFilterChange();
+                    }}
+                  >
+                    <MenuItem value="">All</MenuItem>
+                    <MenuItem value="create">Create</MenuItem>
+                    <MenuItem value="update">Update</MenuItem>
+                    <MenuItem value="delete">Delete</MenuItem>
+                    <MenuItem value="view">View</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Timestamp</TableCell>
+                  <TableCell>Action</TableCell>
+                  <TableCell>User</TableCell>
+                  <TableCell>Role</TableCell>
+                  <TableCell>Changes</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {auditLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>
+                      {new Date(log.timestamp).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={log.action}
+                        color={
+                          log.action === 'create' ? 'success' :
+                          log.action === 'update' ? 'primary' :
+                          log.action === 'delete' ? 'error' :
+                          'default'
+                        }
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{log.user_id}</TableCell>
+                    <TableCell>{log.user_role}</TableCell>
+                    <TableCell>
+                      {log.changes?.map((change, index) => (
+                        <Box key={index} sx={{ mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {change.field}:
+                          </Typography>
+                          <Typography variant="body2">
+                            {change.old_value === null ? (
+                              <span style={{ color: 'green' }}>Added: {JSON.stringify(change.new_value)}</span>
+                            ) : change.new_value === null ? (
+                              <span style={{ color: 'red' }}>Removed: {JSON.stringify(change.old_value)}</span>
+                            ) : (
+                              <>
+                                <span style={{ color: 'red' }}>{JSON.stringify(change.old_value)}</span>
+                                {' → '}
+                                <span style={{ color: 'green' }}>{JSON.stringify(change.new_value)}</span>
+                              </>
+                            )}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+      </Dialog>
 
       {/* Create/Edit Dialog */}
       <Dialog 
@@ -292,10 +481,9 @@ const ContentManagement: React.FC = () => {
                     defaultValue={selectedContent?.type || 'article'}
                     required
                   >
+                    <MenuItem value="blog">Blog</MenuItem>
                     <MenuItem value="article">Article</MenuItem>
-                    <MenuItem value="resource">Resource</MenuItem>
-                    <MenuItem value="policy">Policy</MenuItem>
-                    <MenuItem value="template">Template</MenuItem>
+                    <MenuItem value="video">Video</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -385,6 +573,31 @@ const ContentManagement: React.FC = () => {
                     <MenuItem value="employee">Employee</MenuItem>
                   </Select>
                 </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>Target Companies</Typography>
+                <FormControl fullWidth sx={{ mb: 1 }}>
+                  <InputLabel>Target Mode</InputLabel>
+                  <Select
+                    value={targetMode}
+                    label="Target Mode"
+                    onChange={e => setTargetMode(e.target.value as 'all' | 'only' | 'allExcept')}
+                  >
+                    <MenuItem value="all">All Companies</MenuItem>
+                    <MenuItem value="only">Only Selected Companies</MenuItem>
+                    <MenuItem value="allExcept">All Except Selected Companies</MenuItem>
+                  </Select>
+                </FormControl>
+                {(targetMode === 'only' || targetMode === 'allExcept') && (
+                  <Autocomplete
+                    multiple
+                    options={companies}
+                    getOptionLabel={option => option.name}
+                    value={companies.filter(c => targetCompanyIds.includes(c.id))}
+                    onChange={(_, value) => setTargetCompanyIds(value.map(c => c.id))}
+                    renderInput={params => <TextField {...params} label="Companies" placeholder="Select companies" />}
+                  />
+                )}
               </Grid>
             </Grid>
           </DialogContent>

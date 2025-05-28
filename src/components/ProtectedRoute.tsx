@@ -30,7 +30,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
+  if (
+    allowedRoles.length > 0 &&
+    user &&
+    !(
+      allowedRoles.includes(user.role) ||
+      (user.role === 'superadmin' && user.viewedCompanyId)
+    )
+  ) {
     // Redirect to appropriate dashboard if role not allowed
     return <Navigate to={user.role === 'superadmin' ? '/superadmin' : '/dashboard'} replace />;
   }
