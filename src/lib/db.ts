@@ -1,14 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { startOfWeek, endOfWeek, format, addDays } from 'date-fns';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from './supabaseClient';
 
 export interface OnboardingUser {
   id?: string;

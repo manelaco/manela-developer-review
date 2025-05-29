@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Mail, Lock, User, Check } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { supabase } from '@/lib/supabaseClient';
 
 const formSchema = z.object({
   fullName: z.string().min(1, {
@@ -35,13 +36,12 @@ const formSchema = z.object({
     .refine(
       (password) => /[^A-Za-z0-9]/.test(password),
       { message: 'Password must contain at least one special character' }
-    )
-    .optional(),
+    ),
   companyName: z.string().min(1, {
     message: 'Company name is required'
   }),
-  preferredDomain: z.string().min(1, {
-    message: 'Preferred domain is required'
+  role: z.string().min(1, {
+    message: 'Role is required'
   })
 });
 
@@ -67,7 +67,7 @@ const StepOne: React.FC = () => {
       companyEmail: '',
       password: '',
       companyName: '',
-      preferredDomain: ''
+      role: ''
     }
   });
 
@@ -108,19 +108,114 @@ const StepOne: React.FC = () => {
     return Object.values(criteria).every(Boolean);
   };
 
-  const onSubmit = (data: FormValues) => {
-    // Store in localStorage for persistence across steps
-    localStorage.setItem('onboardingData', JSON.stringify({
-      ...JSON.parse(localStorage.getItem('onboardingData') || '{}'),
-      fullName: data.fullName,
-      companyEmail: data.companyEmail,
-      password: data.password,
-      companyName: data.companyName,
-      preferredDomain: data.preferredDomain,
-      tenant: 'hr' // Tag user as HR tenant
-    }));
-    
-    navigate('/onboarding/step-two');
+  // Utility: Fuzzy match or create company
+  const findOrCreateCompany = async (companyName: string, generatedDomain: string) => {
+    const { data: companies, error } = await supabase
+      .from('companies')
+      .select('*')
+      .ilike('name', `%${companyName}%`);
+    if (error) throw error;
+    if (companies && companies.length > 0) {
+      return companies[0];
+    } else {
+      const { data: newCompany, error: companyError } = await supabase
+        .from('companies')
+        .insert([{ name: companyName, domain: generatedDomain, status: 'active' }])
+        .select()
+        .single();
+      if (companyError) throw companyError;
+      return newCompany;
+    }
+  };
+
+  // Utility: Find or create role
+  const findOrCreateRole = async (roleName: string) => {
+    let { data: role } = await supabase
+      .from('roles')
+      .select('id')
+      .eq('name', roleName)
+      .single();
+    if (!role) {
+      const { data: newRole, error } = await supabase
+        .from('roles')
+        .insert([{ name: roleName }])
+        .select()
+        .single();
+      if (error) throw error;
+      role = newRole;
+    }
+    return role.id;
+  };
+
+  const onSubmit = async (data: FormValues) => {
+    try {
+      // Validate password before proceeding
+      if (!validatePassword(data.password)) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please ensure your password meets all requirements"
+        });
+        return;
+      }
+      const generatedDomain = data.companyName.replace(/\s+/g, '').toLowerCase();
+      // 1. Fuzzy match or create company
+      const company = await findOrCreateCompany(data.companyName, generatedDomain);
+      // 2. Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.companyEmail,
+        password: data.password,
+      });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('User creation failed');
+      const userId = authData.user.id;
+      // 3. Find or create role
+      const roleId = await findOrCreateRole(data.role);
+      // 4. Create user profile
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert([{
+          id: userId,
+          full_name: data.fullName,
+          company_id: company.id,
+          role_id: roleId,
+          onboarding_complete: false,
+          current_onboarding_step: 1,
+          created_at: new Date().toISOString()
+        }]);
+      if (profileError) throw profileError;
+      // 5. Link user to company
+      const { error: linkError } = await supabase
+        .from('company_users')
+        .insert([{
+          company_id: company.id,
+          user_id: userId,
+          role: data.role
+        }]);
+      if (linkError) throw linkError;
+      // 6. Store onboarding data in localStorage
+      localStorage.setItem('onboardingData', JSON.stringify({
+        fullName: data.fullName,
+        companyEmail: data.companyEmail,
+        companyName: data.companyName,
+        companyId: company.id,
+        userId,
+        role: data.role,
+        roleId
+      }));
+      toast({
+        title: "Success",
+        description: "Account created successfully!"
+      });
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error during signup:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create account. Please try again."
+      });
+    }
   };
 
   if (context === "left") {
@@ -144,7 +239,11 @@ const StepOne: React.FC = () => {
       <div className="flex flex-col h-[calc(100vh-2rem)]">
         <form 
           id="step-one-form"
-          onSubmit={form.handleSubmit(onSubmit)} 
+          onSubmit={(e) => {
+            e.preventDefault();
+            console.log('Form submitted');
+            form.handleSubmit(onSubmit)(e);
+          }} 
           className="space-y-6 pt-14 overflow-y-auto pr-4 flex-1"
         > 
           {/* Personal Information Section */}
@@ -308,30 +407,22 @@ const StepOne: React.FC = () => {
             />
             
             <div className="space-y-2">
-              <FormLabel className="text-base">Preferred Company Domain name</FormLabel>
+              <FormLabel className="text-base">Role *</FormLabel>
               
               <div className="flex">
                 <FormField 
                   control={form.control} 
-                  name="preferredDomain" 
+                  name="role" 
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormControl>
-                        <Input placeholder="yourdomain" {...field} className="h-12 rounded-r-none" />
+                        <Input placeholder="Select role" {...field} className="h-12 rounded-r-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} 
                 />
-                <div className="bg-gray-100 px-4 py-3 border border-l-0 border-gray-200 rounded-r-md flex items-center text-gray-500">
-                  .manela.com
-                </div>
               </div>
-              
-              <p className="text-xs text-gray-500 flex items-center gap-1 mt-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-                We will create a unique company URL for you to log into manela
-              </p>
             </div>
           </div>
         </form>
@@ -345,6 +436,10 @@ const StepOne: React.FC = () => {
             type="submit" 
             form="step-one-form" 
             className="flex-1 h-12 bg-[#1A1F2C] hover:bg-[#353e52] text-white"
+            onClick={() => {
+              console.log('Continue button clicked');
+              form.handleSubmit(onSubmit)();
+            }}
           >
             Continue
           </Button>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import ProgressIndicator from '../ProgressIndicator';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 interface ResourceOption {
   id: string;
@@ -97,7 +97,11 @@ const StepFour: React.FC = () => {
       // 2. Link the user profile to the company
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .update({ company_id: company.id })
+        .update({ 
+          company_id: company.id,
+          onboarding_complete: true,
+          current_onboarding_step: 4
+        })
         .eq('id', user.id);
 
       if (profileError) throw profileError;
@@ -121,18 +125,11 @@ const StepFour: React.FC = () => {
 
       if (onboardingError) throw onboardingError;
 
-      // 4. Optionally, update the company with onboarding_user_id
+      // 4. Update the company with onboarding_user_id
       await supabase
         .from('companies')
         .update({ onboarding_user_id: onboarding.id })
         .eq('id', company.id);
-
-      // 5. Mark onboarding as complete in user_profiles
-      const { error: onboardingFlagError } = await supabase
-        .from('user_profiles')
-        .update({ onboarding_complete: true })
-        .eq('id', user.id);
-      if (onboardingFlagError) throw onboardingFlagError;
 
       toast.success('Onboarding completed successfully!');
       navigate('/dashboard');

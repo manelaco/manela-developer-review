@@ -16,12 +16,23 @@ import { useEffect } from 'react';
 import { testSupabaseConnection } from './lib/db';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { supabase } from './lib/supabaseClient';
 
 const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
+    // Test Supabase connection
     testSupabaseConnection();
+    
+    // Test Supabase data fetch
+    const fetchData = async () => {
+      const { data, error } = await supabase.from('resources').select('*');
+      if (error) console.error('❌ Supabase error:', error.message);
+      else console.log('✅ Supabase data:', data);
+    };
+
+    fetchData();
   }, []);
 
   return (

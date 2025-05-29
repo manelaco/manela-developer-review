@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +10,7 @@ import StepTwoSidebar from './StepTwoSidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
+import { supabase } from '@/lib/supabaseClient';
 
 const companyRoles = [
   "Human Resources Lead", 
@@ -38,18 +38,33 @@ const StepTwo: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    // Store in localStorage for persistence across steps
-    localStorage.setItem('onboardingData', JSON.stringify({
-      ...JSON.parse(localStorage.getItem('onboardingData') || '{}'),
-      companySize: data.companySize,
-      industry: data.industry,
-      role: data.role,
-      otherIndustry: data.otherIndustry
-    }));
-    
-    toast.success("Information saved successfully");
-    navigate('/onboarding/step-three');
+  const onSubmit = async (data: FormValues) => {
+    try {
+      const onboardingData = JSON.parse(localStorage.getItem('onboardingData') || '{}');
+      
+      // Update current step in user profile
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ current_onboarding_step: 2 })
+        .eq('id', onboardingData.userId);
+
+      if (updateError) throw updateError;
+
+      // Store in localStorage for persistence across steps
+      localStorage.setItem('onboardingData', JSON.stringify({
+        ...onboardingData,
+        companySize: data.companySize,
+        industry: data.industry,
+        role: data.role,
+        otherIndustry: data.otherIndustry
+      }));
+      
+      toast.success("Information saved successfully");
+      navigate('/onboarding/step-three');
+    } catch (error) {
+      console.error('Error saving step two data:', error);
+      toast.error('Failed to save information. Please try again.');
+    }
   };
 
   // Get domain name from local storage

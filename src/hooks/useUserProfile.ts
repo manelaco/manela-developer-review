@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export function useUserProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<{ company_id?: string } | null>(null);

@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ProgressIndicator from '../ProgressIndicator';
 import { MinusIcon, PlusIcon, InfoIcon } from 'lucide-react';
+import { toast } from "@/components/ui/sonner";
+import { supabase } from '@/lib/supabaseClient';
+
 interface PlatformOption {
   id: string;
   name: string;
@@ -39,14 +42,29 @@ const StepThree: React.FC = () => {
       seats: increment ? option.seats + 1 : Math.max(0, option.seats - 1)
     } : option));
   };
-  const handleContinue = () => {
-    // Get existing onboarding data including the role from Step Two
-    const existingData = JSON.parse(localStorage.getItem('onboardingData') || '{}');
-    localStorage.setItem('onboardingData', JSON.stringify({
-      ...existingData,
-      platforms: platformOptions
-    }));
-    navigate('/onboarding/step-four');
+  const handleContinue = async () => {
+    try {
+      const onboardingData = JSON.parse(localStorage.getItem('onboardingData') || '{}');
+      
+      // Update current step in user profile
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ current_onboarding_step: 3 })
+        .eq('id', onboardingData.userId);
+
+      if (updateError) throw updateError;
+
+      // Store in localStorage for persistence across steps
+      localStorage.setItem('onboardingData', JSON.stringify({
+        ...onboardingData,
+        platforms: platformOptions
+      }));
+      
+      navigate('/onboarding/step-four');
+    } catch (error) {
+      console.error('Error saving step three data:', error);
+      toast.error('Failed to save information. Please try again.');
+    }
   };
   const goBack = () => {
     navigate('/onboarding/step-two');

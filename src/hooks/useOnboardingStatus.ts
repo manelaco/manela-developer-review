@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 export function useOnboardingStatus(userId: string | undefined) {
   const [status, setStatus] = useState<'loading' | 'complete' | 'incomplete' | 'error'>('loading');
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -14,7 +15,7 @@ export function useOnboardingStatus(userId: string | undefined) {
     setStatus('loading');
     supabase
       .from('user_profiles')
-      .select('onboarding_complete')
+      .select('onboarding_complete, current_onboarding_step')
       .eq('id', userId)
       .single()
       .then(({ data, error }) => {
@@ -24,11 +25,13 @@ export function useOnboardingStatus(userId: string | undefined) {
           console.error('Onboarding status fetch error:', error);
         } else if (data?.onboarding_complete) {
           setStatus('complete');
+          setCurrentStep(4);
         } else {
           setStatus('incomplete');
+          setCurrentStep(data?.current_onboarding_step || 1);
         }
       });
   }, [userId]);
 
-  return { status, error };
+  return { status, currentStep, error };
 } 

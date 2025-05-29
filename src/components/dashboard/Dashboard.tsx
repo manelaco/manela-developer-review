@@ -50,8 +50,8 @@ import { Tabs, Tab } from '@mui/material';
 import Overview from './Overview';
 import EmployeeManagement from './EmployeeManagement';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
-import OnboardingOverlay from '@/components/onboarding/OnboardingOverlay';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import OnboardingModal from '@/components/onboarding/OnboardingModal';
 
 interface OnboardingData {
   companyName?: string;
@@ -199,6 +199,7 @@ const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const { company_id, loading: profileLoading } = useUserProfile(user?.id);
   const { status: onboardingStatus, error: onboardingError } = useOnboardingStatus(user?.id);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ['employees', sidebarWeekStart],
@@ -505,8 +506,21 @@ const Dashboard: React.FC = () => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        {/* Dashboard Content */}
-        <div className={`flex-1 ${onboardingStatus === 'incomplete' ? 'opacity-50 pointer-events-none' : ''}`}>
+        {/* Onboarding Modal Overlay */}
+        {user?.id && onboardingStatus === 'incomplete' && !onboardingComplete && (
+          <>
+            <div className="fixed inset-0 bg-black/40 z-[1000] pointer-events-auto" />
+            <OnboardingModal
+              userId={user.id}
+              onComplete={() => {
+                setOnboardingComplete(true);
+                window.location.reload(); // or refetch onboarding status if you want a smoother UX
+              }}
+            />
+          </>
+        )}
+        {/* Dashboard Content (locked if onboarding incomplete) */}
+        <div className={`flex-1 ${onboardingStatus === 'incomplete' && !onboardingComplete ? 'opacity-50 pointer-events-none select-none' : ''}`}>
           {/* Mobile Menu Button */}
           <button 
             className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-[#F8F6F3] border border-[#E5E3DF]"
@@ -797,9 +811,6 @@ const Dashboard: React.FC = () => {
             </AlertDialogContent>
           </AlertDialog>
         </div>
-
-        {/* Onboarding Overlay */}
-        {onboardingStatus === 'incomplete' && <OnboardingOverlay />}
       </div>
     </SidebarProvider>
   );
