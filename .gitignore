@@ -27,6 +27,3 @@ dist-ssr
 .env
 .env.local
 .env.*.local
-
-VITE_SUPABASE_URL=https://ddmxfuxbiofxmnldznjv.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbXhmdXhiaW9meG1ubGR6bmp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MjgxMDEsImV4cCI6MjA2MzUwNDEwMX0.tIrBxEv71S6SBih-Sy3VCgNvSy2HCB0DrAIArytBblg

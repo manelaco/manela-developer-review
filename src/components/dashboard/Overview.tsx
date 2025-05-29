@@ -1,191 +1,97 @@
 import React from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Grid,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Avatar,
-  Chip
-} from '@mui/material';
-import {
-  People as PeopleIcon,
-  Assignment as AssignmentIcon,
-  Event as EventIcon,
-  Notifications as NotificationsIcon
-} from '@mui/icons-material';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar, UserPlus, FileText } from 'lucide-react';
+import { actionCards, mockEvents, mockReturning, mockNews } from '@/lib/mockData';
 
-// Mock data for demonstration
-const mockStats = {
-  totalEmployees: 45,
-  activeOnboarding: 3,
-  upcomingEvents: 2,
-  pendingTasks: 5
-};
+interface OverviewProps {
+  employees: any[];
+  isLoading: boolean;
+  onAddEmployee: () => void;
+}
 
-const mockRecentActivity = [
-  {
-    id: 1,
-    action: 'New employee onboarded',
-    employee: 'John Doe',
-    time: '2 hours ago'
-  },
-  {
-    id: 2,
-    action: 'Training completed',
-    employee: 'Jane Smith',
-    time: '4 hours ago'
-  },
-  {
-    id: 3,
-    action: 'Document approved',
-    employee: 'Bob Wilson',
-    time: '6 hours ago'
-  }
-];
-
-const Overview: React.FC = () => {
+const Overview: React.FC<OverviewProps> = ({ employees, isLoading, onAddEmployee }) => {
   return (
-    <Box>
-      <Grid container spacing={3}>
-        {/* Stats Cards */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+    <div className="space-y-6">
+      {/* Action Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {actionCards.map((card, index) => (
+          <Card key={index} className={card.color}>
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                {card.icon === 'Calendar' && <Calendar className={`h-6 w-6 ${card.iconColor}`} />}
+                {card.icon === 'UserPlus' && <UserPlus className={`h-6 w-6 ${card.iconColor}`} />}
+                {card.icon === 'FileText' && <FileText className={`h-6 w-6 ${card.iconColor}`} />}
+                <CardTitle className="text-lg">{card.title}</CardTitle>
+              </div>
+            </CardHeader>
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Employees
-              </Typography>
-              <Typography variant="h4">
-                {mockStats.totalEmployees}
-              </Typography>
-              <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                +2 this month
-              </Typography>
+              <Button variant="ghost" className="w-full justify-start">
+                {card.btn}
+              </Button>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Active Onboarding
-              </Typography>
-              <Typography variant="h4">
-                {mockStats.activeOnboarding}
-              </Typography>
-              <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
-                Requires attention
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Upcoming Events
-              </Typography>
-              <Typography variant="h4">
-                {mockStats.upcomingEvents}
-              </Typography>
-              <Typography variant="body2" color="info.main" sx={{ mt: 1 }}>
-                Next: Team Training
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Pending Tasks
-              </Typography>
-              <Typography variant="h4">
-                {mockStats.pendingTasks}
-              </Typography>
-              <Typography variant="body2" color="error.main" sx={{ mt: 1 }}>
-                High priority
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        ))}
+      </div>
 
-        {/* Recent Activity */}
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Recent Activity
-              </Typography>
-              <List>
-                {mockRecentActivity.map((activity) => (
-                  <ListItem key={activity.id} divider>
-                    <ListItemIcon>
-                      <Avatar sx={{ bgcolor: 'primary.main' }}>
-                        <PeopleIcon />
-                      </Avatar>
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={activity.action}
-                      secondary={`${activity.employee} • ${activity.time}`}
-                    />
-                    <Button size="small" variant="outlined">
-                      View Details
-                    </Button>
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Upcoming Events */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Upcoming Events</CardTitle>
+          <CardDescription>Leave and return dates for the next 30 days</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {mockEvents.map((event, index) => (
+              <div key={index} className={`p-3 rounded-lg ${event.color}`}>
+                <div className="font-medium">{event.name}</div>
+                <div className="text-sm">{event.date}</div>
+                <div className="text-sm">{event.type}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Quick Actions */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quick Actions
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<PeopleIcon />}
-                >
-                  Add New Employee
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<AssignmentIcon />}
-                >
-                  Create Training
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<EventIcon />}
-                >
-                  Schedule Event
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<NotificationsIcon />}
-                >
-                  Send Announcement
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+      {/* Returning Soon */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Returning Soon</CardTitle>
+          <CardDescription>Employees returning from leave</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {mockReturning.map((employee, index) => (
+              <div key={index} className={`p-3 rounded-lg ${employee.color}`}>
+                <div className="font-medium">{employee.name}</div>
+                <div className="text-sm">{employee.date}</div>
+                <div className="text-sm">{employee.note}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Latest News */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Latest News</CardTitle>
+          <CardDescription>Updates and announcements</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {mockNews.map((news, index) => (
+              <div key={index} className="border-b last:border-0 pb-4 last:pb-0">
+                <div className="font-medium">{news.title}</div>
+                <div className="text-sm text-gray-500">
+                  {news.date} · {news.time}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

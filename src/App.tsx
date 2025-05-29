@@ -16,23 +16,26 @@ import { useEffect } from 'react';
 import { testSupabaseConnection } from './lib/db';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import { supabase } from './lib/supabaseClient';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
 const App = () => {
   useEffect(() => {
-    // Test Supabase connection
-    testSupabaseConnection();
-    
-    // Test Supabase data fetch
-    const fetchData = async () => {
-      const { data, error } = await supabase.from('resources').select('*');
-      if (error) console.error('❌ Supabase error:', error.message);
-      else console.log('✅ Supabase data:', data);
+    const testConnection = async () => {
+      try {
+        await testSupabaseConnection();
+      } catch (error) {
+        console.error('Failed to connect to Supabase:', error);
+      }
     };
-
-    fetchData();
+    testConnection();
   }, []);
 
   return (

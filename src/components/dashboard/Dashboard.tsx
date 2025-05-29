@@ -202,8 +202,8 @@ const Dashboard: React.FC = () => {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
-    queryKey: ['employees', sidebarWeekStart],
-    queryFn: () => getEmployeesForWeek(sidebarWeekStart),
+    queryKey: ['employees'],
+    queryFn: () => getEmployeesForWeek(new Date()),
   });
 
   const addEmployeeMutation = useMutation({
@@ -211,6 +211,11 @@ const Dashboard: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsEmployeeSheetOpen(false);
+      toast.success('Employee added successfully');
+    },
+    onError: (error) => {
+      toast.error('Failed to add employee');
+      console.error('Add employee error:', error);
     },
   });
 
@@ -220,6 +225,11 @@ const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsEmployeeSheetOpen(false);
       setSelectedEmployee(null);
+      toast.success('Employee updated successfully');
+    },
+    onError: (error) => {
+      toast.error('Failed to update employee');
+      console.error('Update employee error:', error);
     },
   });
 
@@ -229,6 +239,11 @@ const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsDeleteDialogOpen(false);
       setSelectedEmployee(null);
+      toast.success('Employee deleted successfully');
+    },
+    onError: (error) => {
+      toast.error('Failed to delete employee');
+      console.error('Delete employee error:', error);
     },
   });
 
@@ -248,25 +263,18 @@ const Dashboard: React.FC = () => {
   };
 
   const handleEmployeeSubmit = async (formData: any) => {
-    try {
-      if (selectedEmployee) {
-        await updateEmployeeMutation.mutateAsync({ id: selectedEmployee.id!, data: formData });
-        toast.success('Employee updated successfully');
-      } else {
-        await addEmployeeMutation.mutateAsync(formData);
-        toast.success('Employee added successfully');
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('An error occurred while saving the employee');
-      }
+    if (selectedEmployee) {
+      await updateEmployeeMutation.mutateAsync({
+        id: selectedEmployee.id,
+        data: formData,
+      });
+    } else {
+      await addEmployeeMutation.mutateAsync(formData);
     }
   };
 
   const handleDeleteConfirm = async () => {
-    if (selectedEmployee?.id) {
+    if (selectedEmployee) {
       await deleteEmployeeMutation.mutateAsync(selectedEmployee.id);
     }
   };

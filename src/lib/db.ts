@@ -40,8 +40,22 @@ export const saveOnboardingData = async (data: OnboardingUser) => {
 
 export const testSupabaseConnection = async () => {
   try {
+    // First, test if we can connect to Supabase at all
+    const { data: healthCheck, error: healthError } = await supabase.from('_health').select('*').limit(1);
+    
+    if (healthError) {
+      console.error('Supabase health check failed:', healthError);
+      return false;
+    }
+
+    // Then try to query the onboarding_users table
     const { data, error } = await supabase.from('onboarding_users').select('count').limit(1);
-    if (error) throw error;
+    
+    if (error) {
+      console.error('Supabase onboarding_users query failed:', error);
+      return false;
+    }
+
     console.log('Supabase connection successful!');
     return true;
   } catch (error) {
