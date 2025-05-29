@@ -51,6 +51,7 @@ import Overview from './Overview';
 import EmployeeManagement from './EmployeeManagement';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import OnboardingOverlay from '@/components/onboarding/OnboardingOverlay';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface OnboardingData {
   companyName?: string;
@@ -196,7 +197,7 @@ const Dashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const { user, isSuperadmin, viewedCompanyId } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const { company_id } = useUserProfile(); // adjust as needed for your user profile context
+  const { company_id, loading: profileLoading } = useUserProfile(user?.id);
   const onboardingComplete = useOnboardingStatus(user?.id, company_id);
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
@@ -468,11 +469,8 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  if (onboardingComplete === null) {
+  if (profileLoading || onboardingComplete === null) {
     return <div className="min-h-screen flex items-center justify-center">Checking onboarding status...</div>;
-  }
-  if (onboardingComplete === false) {
-    return <OnboardingOverlay />;
   }
 
   if (loading) {
@@ -503,295 +501,301 @@ const Dashboard: React.FC = () => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        {/* Mobile Menu Button */}
-        <button 
-          className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-[#F8F6F3] border border-[#E5E3DF]"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          <Menu className="h-6 w-6 text-[#A85B2A]" />
-        </button>
+        {/* Dashboard Content */}
+        <div className={`flex-1 ${onboardingComplete === false ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* Mobile Menu Button */}
+          <button 
+            className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-[#F8F6F3] border border-[#E5E3DF]"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <Menu className="h-6 w-6 text-[#A85B2A]" />
+          </button>
 
-        {/* Left Sidebar */}
-        <aside className={
-          [
-            'w-64',
-            brandSidebar,
-            'flex flex-col py-8 px-4 z-40',
-            isMobileMenuOpen ? 'fixed inset-y-0 left-0 transform translate-x-0 transition-transform duration-200 ease-in-out' : 'fixed inset-y-0 left-0 -translate-x-full transition-transform duration-200 ease-in-out',
-            'lg:static lg:translate-x-0 lg:inset-y-auto lg:left-auto lg:transform-none lg:transition-none'
-          ].join(' ')
-        }>
-          <div className="mb-10 flex items-center gap-2 px-2">
-            <span className={`text-3xl font-bold ${brandColor} tracking-tight`}>manela</span>
-            {isSuperadmin && viewedCompanyId && (
-              <Badge className="ml-2 bg-[#EDE6DE] text-[#A85B2A] px-2 py-1 rounded text-xs">
-                Viewing as Company
-              </Badge>
-            )}
-          </div>
-          <nav className="flex flex-col gap-1">
-            {navItems.map((item, i) => (
-              <div
-                key={item.name}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-gray-700 hover:bg-[#EDE6DE] hover:text-[#A85B2A] cursor-pointer ${item.active ? brandActive : ''}`}
-              >
-                {item.icon}
-                <span>{item.name}</span>
-              </div>
-            ))}
-          </nav>
-        </aside>
+          {/* Left Sidebar */}
+          <aside className={
+            [
+              'w-64',
+              brandSidebar,
+              'flex flex-col py-8 px-4 z-40',
+              isMobileMenuOpen ? 'fixed inset-y-0 left-0 transform translate-x-0 transition-transform duration-200 ease-in-out' : 'fixed inset-y-0 left-0 -translate-x-full transition-transform duration-200 ease-in-out',
+              'lg:static lg:translate-x-0 lg:inset-y-auto lg:left-auto lg:transform-none lg:transition-none'
+            ].join(' ')
+          }>
+            <div className="mb-10 flex items-center gap-2 px-2">
+              <span className={`text-3xl font-bold ${brandColor} tracking-tight`}>manela</span>
+              {isSuperadmin && viewedCompanyId && (
+                <Badge className="ml-2 bg-[#EDE6DE] text-[#A85B2A] px-2 py-1 rounded text-xs">
+                  Viewing as Company
+                </Badge>
+              )}
+            </div>
+            <nav className="flex flex-col gap-1">
+              {navItems.map((item, i) => (
+                <div
+                  key={item.name}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-gray-700 hover:bg-[#EDE6DE] hover:text-[#A85B2A] cursor-pointer ${item.active ? brandActive : ''}`}
+                >
+                  {item.icon}
+                  <span>{item.name}</span>
+                </div>
+              ))}
+            </nav>
+          </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 min-h-screen bg-white">
-          {/* Header */}
-          <header className="h-20 flex items-center justify-between border-b border-[#E5E3DF] px-4 md:px-8">
-            <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-            {isSuperadmin && viewedCompanyId && (
-              <Button
-                variant="outline"
-                onClick={() => navigate('/superadmin')}
-                className="text-[#A85B2A] border-[#A85B2A] hover:bg-[#EDE6DE]"
-              >
-                Exit Company View
-              </Button>
-            )}
-          </header>
-
-          {/* Welcome */}
-          <div className="px-4 md:px-8 pt-8 pb-4">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome Back, Wolf Pixel <span className="inline-block">👋</span></h2>
-          </div>
-
-          {/* Action Cards */}
-          <div className="flex flex-col lg:flex-row gap-6 px-4 md:px-8 pb-8">
-            {actionCards.map((card, i) => (
-              <div key={i} className={`flex-1 rounded-xl border border-[#E5E3DF] ${card.color} flex flex-col items-start p-6 min-w-[220px]`}>
-                <div className="mb-4">{card.icon}</div>
-                <div className="font-semibold text-lg mb-2 text-gray-900">{card.title}</div>
-                <Button variant="outline" className="mt-auto px-3 py-2 border border-[#E5E3DF] text-gray-700 flex items-center gap-2 group">
-                  {card.btn}
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          {/* Employees Table */}
-          <div className="px-4 md:px-8 pb-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Employees</h3>
-              <div className="flex gap-2">
-                <Button 
+          {/* Main Content */}
+          <main className="flex-1 min-h-screen bg-white">
+            {/* Header */}
+            <header className="h-20 flex items-center justify-between border-b border-[#E5E3DF] px-4 md:px-8">
+              <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+              {isSuperadmin && viewedCompanyId && (
+                <Button
                   variant="outline"
-                  onClick={async () => {
-                    try {
-                      await insertMockEmployees();
-                      toast.success('Mock data inserted successfully');
-                      queryClient.invalidateQueries({ queryKey: ['employees'] });
-                    } catch (error) {
-                      toast.error('Failed to insert mock data');
-                    }
-                  }}
+                  onClick={() => navigate('/superadmin')}
+                  className="text-[#A85B2A] border-[#A85B2A] hover:bg-[#EDE6DE]"
                 >
-                  Insert Mock Data
+                  Exit Company View
                 </Button>
-                <Button 
-                  className="bg-black text-white px-5 py-2 rounded-lg text-sm font-semibold w-full lg:w-auto"
-                  onClick={handleAddEmployee}
-                >
-                  + Add New Employee
-                </Button>
-              </div>
+              )}
+            </header>
+
+            {/* Welcome */}
+            <div className="px-4 md:px-8 pt-8 pb-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome Back, Wolf Pixel <span className="inline-block">👋</span></h2>
             </div>
-            <div className="bg-white border border-[#E5E3DF] rounded-xl overflow-x-auto">
-              <table className="w-full text-sm min-w-[800px]">
-                <thead className="bg-[#F8F6F3]">
-                  <tr>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Employee Name</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Job Title</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Leave dates</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Return date</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Leave type</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Employee Status</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Support Center</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employees.map((emp) => (
-                    <tr 
-                      key={emp.id} 
-                      className="border-b border-[#F8F6F3] hover:bg-[#F8F6F3] cursor-pointer transition-colors"
-                      onClick={() => handleEditEmployee(emp)}
-                    >
-                      <td className="px-6 py-3">
-                        <span className="font-medium text-gray-900">{emp.name}</span>
-                      </td>
-                      <td className="px-6 py-3 text-gray-700">{emp.job_title}</td>
-                      <td className="px-6 py-3 text-gray-700">{emp.leave_date}</td>
-                      <td className="px-6 py-3 text-gray-700">{emp.return_date}</td>
-                      <td className="px-6 py-3 text-gray-700">{emp.leave_type}</td>
-                      <td className="px-6 py-3">
-                        <Badge className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          emp.status === 'ACTIVE' ? 'bg-[#E6F7F1] text-[#1CA97A]' : 
-                          emp.status === 'ON LEAVE' ? 'bg-[#F3F8FC] text-[#2A7FA8]' : 
-                          'bg-[#FCF6F3] text-[#A85B2A]'
-                        }`}>
-                          {emp.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-3 text-gray-700">{emp.support_status}</td>
+
+            {/* Action Cards */}
+            <div className="flex flex-col lg:flex-row gap-6 px-4 md:px-8 pb-8">
+              {actionCards.map((card, i) => (
+                <div key={i} className={`flex-1 rounded-xl border border-[#E5E3DF] ${card.color} flex flex-col items-start p-6 min-w-[220px]`}>
+                  <div className="mb-4">{card.icon}</div>
+                  <div className="font-semibold text-lg mb-2 text-gray-900">{card.title}</div>
+                  <Button variant="outline" className="mt-auto px-3 py-2 border border-[#E5E3DF] text-gray-700 flex items-center gap-2 group">
+                    {card.btn}
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Employees Table */}
+            <div className="px-4 md:px-8 pb-8">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Employees</h3>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await insertMockEmployees();
+                        toast.success('Mock data inserted successfully');
+                        queryClient.invalidateQueries({ queryKey: ['employees'] });
+                      } catch (error) {
+                        toast.error('Failed to insert mock data');
+                      }
+                    }}
+                  >
+                    Insert Mock Data
+                  </Button>
+                  <Button 
+                    className="bg-black text-white px-5 py-2 rounded-lg text-sm font-semibold w-full lg:w-auto"
+                    onClick={handleAddEmployee}
+                  >
+                    + Add New Employee
+                  </Button>
+                </div>
+              </div>
+              <div className="bg-white border border-[#E5E3DF] rounded-xl overflow-x-auto">
+                <table className="w-full text-sm min-w-[800px]">
+                  <thead className="bg-[#F8F6F3]">
+                    <tr>
+                      <th className="text-left px-6 py-3 font-medium text-gray-500">Employee Name</th>
+                      <th className="text-left px-6 py-3 font-medium text-gray-500">Job Title</th>
+                      <th className="text-left px-6 py-3 font-medium text-gray-500">Leave dates</th>
+                      <th className="text-left px-6 py-3 font-medium text-gray-500">Return date</th>
+                      <th className="text-left px-6 py-3 font-medium text-gray-500">Leave type</th>
+                      <th className="text-left px-6 py-3 font-medium text-gray-500">Employee Status</th>
+                      <th className="text-left px-6 py-3 font-medium text-gray-500">Support Center</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {employees.map((emp) => (
+                      <tr 
+                        key={emp.id} 
+                        className="border-b border-[#F8F6F3] hover:bg-[#F8F6F3] cursor-pointer transition-colors"
+                        onClick={() => handleEditEmployee(emp)}
+                      >
+                        <td className="px-6 py-3">
+                          <span className="font-medium text-gray-900">{emp.name}</span>
+                        </td>
+                        <td className="px-6 py-3 text-gray-700">{emp.job_title}</td>
+                        <td className="px-6 py-3 text-gray-700">{emp.leave_date}</td>
+                        <td className="px-6 py-3 text-gray-700">{emp.return_date}</td>
+                        <td className="px-6 py-3 text-gray-700">{emp.leave_type}</td>
+                        <td className="px-6 py-3">
+                          <Badge className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            emp.status === 'ACTIVE' ? 'bg-[#E6F7F1] text-[#1CA97A]' : 
+                            emp.status === 'ON LEAVE' ? 'bg-[#F3F8FC] text-[#2A7FA8]' : 
+                            'bg-[#FCF6F3] text-[#A85B2A]'
+                          }`}>
+                            {emp.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-3 text-gray-700">{emp.support_status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
 
-        {/* Right Sidebar */}
-        <aside className="hidden xl:block w-96 bg-white border-l border-[#E5E3DF] flex flex-col px-6 py-8 gap-6">
-          {/* Calendar */}
-          <div className="bg-[#F8F6F3] rounded-xl p-5 mb-2">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-semibold text-gray-900">{format(sidebarWeekStart, 'MMMM yyyy')}</span>
-              <div className="flex gap-2 items-center">
-                {!isCurrentWeek && (
-                  <button onClick={goToCurrentWeek} className="p-1 rounded hover:bg-[#EDE6DE]" title="Back to today">
-                    <Calendar className="h-5 w-5 text-[#A85B2A]" />
-                  </button>
-                )}
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevWeek}><ChevronLeft className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextWeek}><ChevronRight className="h-4 w-4" /></Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
-              <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {sidebarWeekDays.map((day, idx) => (
-                <div key={idx} className={`py-1.5 rounded-lg relative ${isSameDay(day, todayMontreal) ? 'bg-[#A85B2A] text-white font-bold' : 'bg-white text-gray-900'}`}>
-                  {format(day, 'd')}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Event Tabs */}
-          <div className="flex gap-2 mb-2">
-            <button className={`px-3 py-1 rounded ${eventTab==='leaving' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('leaving')}>Leaving</button>
-            <button className={`px-3 py-1 rounded ${eventTab==='returning' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('returning')}>Returning</button>
-            <button className={`px-3 py-1 rounded ${eventTab==='onleave' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('onleave')}>On Leave</button>
-            <button className={`px-3 py-1 rounded ${eventTab==='reintegration' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('reintegration')}>Reintegration</button>
-          </div>
-          <div>
-            {eventTab === 'leaving' && leavingThisWeek.length === 0 && <div className="text-gray-400 text-sm py-2">No employees leaving this week.</div>}
-            {eventTab === 'leaving' && leavingThisWeek.map((emp, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#F3F8FC] text-[#2A7FA8]">
-                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{emp.name}</div>
-                  <div className="text-xs">{formatDisplayDate(emp.leaveDate)} · {emp.type}</div>
+          {/* Right Sidebar */}
+          <aside className="hidden xl:block w-96 bg-white border-l border-[#E5E3DF] flex flex-col px-6 py-8 gap-6">
+            {/* Calendar */}
+            <div className="bg-[#F8F6F3] rounded-xl p-5 mb-2">
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-semibold text-gray-900">{format(sidebarWeekStart, 'MMMM yyyy')}</span>
+                <div className="flex gap-2 items-center">
+                  {!isCurrentWeek && (
+                    <button onClick={goToCurrentWeek} className="p-1 rounded hover:bg-[#EDE6DE]" title="Back to today">
+                      <Calendar className="h-5 w-5 text-[#A85B2A]" />
+                    </button>
+                  )}
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevWeek}><ChevronLeft className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextWeek}><ChevronRight className="h-4 w-4" /></Button>
                 </div>
               </div>
-            ))}
-            {eventTab === 'returning' && returningThisWeek.length === 0 && <div className="text-gray-400 text-sm py-2">No employees returning this week.</div>}
-            {eventTab === 'returning' && returningThisWeek.map((emp, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#E6F7F1] text-[#1CA97A]">
-                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{emp.name}</div>
-                  <div className="text-xs">{formatDisplayDate(emp.returnDate)} · {emp.type}</div>
-                </div>
+              <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
+                <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
               </div>
-            ))}
-            {eventTab === 'onleave' && currentlyOnLeave.length === 0 && <div className="text-gray-400 text-sm py-2">No employees on leave this week.</div>}
-            {eventTab === 'onleave' && currentlyOnLeave.map((emp, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#F8F6F3] text-gray-700">
-                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{emp.name}</div>
-                  <div className="text-xs">{formatDisplayDate(emp.leaveDate)} - {formatDisplayDate(emp.returnDate)} · {emp.type}</div>
-                </div>
-              </div>
-            ))}
-            {eventTab === 'reintegration' && reintegrationTrack.length === 0 && <div className="text-gray-400 text-sm py-2">No employees on reintegration track.</div>}
-            {eventTab === 'reintegration' && reintegrationTrack.map((emp, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#FCF6F3] text-[#A85B2A]">
-                <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{emp.name}</div>
-                  <div className="text-xs">{formatDisplayDate(emp.leaveDate)} - {formatDisplayDate(emp.returnDate)} · {emp.type}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* News */}
-          <div>
-            <div className="font-semibold text-gray-900 mb-2">Legal Leave News</div>
-            <input className="w-full mb-2 px-3 py-2 rounded-lg border border-[#E5E3DF] text-sm" placeholder="Search news or topics..." />
-            <div className="flex flex-col gap-2">
-              {news.map((n, i) => (
-                <div key={i} className={`rounded-lg px-3 py-2 ${n.featured ? 'bg-[#FCF6F3] border-l-4 border-[#A85B2A]' : 'bg-[#F8F6F3]' }`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    {n.featured && <span className="text-xs font-semibold text-[#A85B2A] bg-[#EDE6DE] px-2 py-0.5 rounded">Featured</span>}
-                    <span className="font-medium text-gray-900 text-sm">{n.title}</span>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {sidebarWeekDays.map((day, idx) => (
+                  <div key={idx} className={`py-1.5 rounded-lg relative ${isSameDay(day, todayMontreal) ? 'bg-[#A85B2A] text-white font-bold' : 'bg-white text-gray-900'}`}>
+                    {format(day, 'd')}
                   </div>
-                  <div className="text-xs text-gray-500">{n.date} · {n.time}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Event Tabs */}
+            <div className="flex gap-2 mb-2">
+              <button className={`px-3 py-1 rounded ${eventTab==='leaving' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('leaving')}>Leaving</button>
+              <button className={`px-3 py-1 rounded ${eventTab==='returning' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('returning')}>Returning</button>
+              <button className={`px-3 py-1 rounded ${eventTab==='onleave' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('onleave')}>On Leave</button>
+              <button className={`px-3 py-1 rounded ${eventTab==='reintegration' ? 'bg-[#EDE6DE] text-[#A85B2A]' : 'bg-[#F8F6F3] text-gray-700'}`} onClick={()=>setEventTab('reintegration')}>Reintegration</button>
+            </div>
+            <div>
+              {eventTab === 'leaving' && leavingThisWeek.length === 0 && <div className="text-gray-400 text-sm py-2">No employees leaving this week.</div>}
+              {eventTab === 'leaving' && leavingThisWeek.map((emp, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#F3F8FC] text-[#2A7FA8]">
+                  <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{emp.name}</div>
+                    <div className="text-xs">{formatDisplayDate(emp.leaveDate)} · {emp.type}</div>
+                  </div>
+                </div>
+              ))}
+              {eventTab === 'returning' && returningThisWeek.length === 0 && <div className="text-gray-400 text-sm py-2">No employees returning this week.</div>}
+              {eventTab === 'returning' && returningThisWeek.map((emp, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#E6F7F1] text-[#1CA97A]">
+                  <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{emp.name}</div>
+                    <div className="text-xs">{formatDisplayDate(emp.returnDate)} · {emp.type}</div>
+                  </div>
+                </div>
+              ))}
+              {eventTab === 'onleave' && currentlyOnLeave.length === 0 && <div className="text-gray-400 text-sm py-2">No employees on leave this week.</div>}
+              {eventTab === 'onleave' && currentlyOnLeave.map((emp, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#F8F6F3] text-gray-700">
+                  <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{emp.name}</div>
+                    <div className="text-xs">{formatDisplayDate(emp.leaveDate)} - {formatDisplayDate(emp.returnDate)} · {emp.type}</div>
+                  </div>
+                </div>
+              ))}
+              {eventTab === 'reintegration' && reintegrationTrack.length === 0 && <div className="text-gray-400 text-sm py-2">No employees on reintegration track.</div>}
+              {eventTab === 'reintegration' && reintegrationTrack.map((emp, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2 bg-[#FCF6F3] text-[#A85B2A]">
+                  <Avatar className="h-7 w-7 bg-[#EDE6DE] text-[#A85B2A] font-bold">{emp.name.split(' ').map(n => n[0]).join('')}</Avatar>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{emp.name}</div>
+                    <div className="text-xs">{formatDisplayDate(emp.leaveDate)} - {formatDisplayDate(emp.returnDate)} · {emp.type}</div>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        </aside>
 
-        {/* Mobile Overlay */}
-        {isMobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
-
-        {/* Employee Form Sheet */}
-        <Sheet open={isEmployeeSheetOpen} onOpenChange={setIsEmployeeSheetOpen}>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>{selectedEmployee ? 'Employee Details' : 'Add New Employee'}</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6">
-              <EmployeeForm
-                employee={selectedEmployee || undefined}
-                onSubmit={handleEmployeeSubmit}
-                onCancel={() => {
-                  setIsEmployeeSheetOpen(false);
-                  setSelectedEmployee(null);
-                }}
-              />
+            {/* News */}
+            <div>
+              <div className="font-semibold text-gray-900 mb-2">Legal Leave News</div>
+              <input className="w-full mb-2 px-3 py-2 rounded-lg border border-[#E5E3DF] text-sm" placeholder="Search news or topics..." />
+              <div className="flex flex-col gap-2">
+                {news.map((n, i) => (
+                  <div key={i} className={`rounded-lg px-3 py-2 ${n.featured ? 'bg-[#FCF6F3] border-l-4 border-[#A85B2A]' : 'bg-[#F8F6F3]' }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      {n.featured && <span className="text-xs font-semibold text-[#A85B2A] bg-[#EDE6DE] px-2 py-0.5 rounded">Featured</span>}
+                      <span className="font-medium text-gray-900 text-sm">{n.title}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">{n.date} · {n.time}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </SheetContent>
-        </Sheet>
+          </aside>
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the employee record.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteConfirm}
-                className="bg-red-500 hover:bg-red-600"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          {/* Mobile Overlay */}
+          {isMobileMenuOpen && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+          )}
+
+          {/* Employee Form Sheet */}
+          <Sheet open={isEmployeeSheetOpen} onOpenChange={setIsEmployeeSheetOpen}>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>{selectedEmployee ? 'Employee Details' : 'Add New Employee'}</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6">
+                <EmployeeForm
+                  employee={selectedEmployee || undefined}
+                  onSubmit={handleEmployeeSubmit}
+                  onCancel={() => {
+                    setIsEmployeeSheetOpen(false);
+                    setSelectedEmployee(null);
+                  }}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the employee record.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteConfirm}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+
+        {/* Onboarding Overlay */}
+        {onboardingComplete === false && <OnboardingOverlay />}
       </div>
     </SidebarProvider>
   );

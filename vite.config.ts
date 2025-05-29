@@ -10,6 +10,14 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 5173,
     strictPort: true,
+    hmr: {
+      overlay: false,
+      clientPort: 5173
+    },
+    watch: {
+      usePolling: true
+    },
+    middlewareMode: false
   },
   build: {
     outDir: 'dist',

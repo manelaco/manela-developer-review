@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import StepTwo from './StepTwo';
 import StepThree from './StepThree';
 import StepFour from './StepFour';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const steps = [StepTwo, StepThree, StepFour];
 
@@ -13,32 +15,29 @@ const OnboardingOverlay: React.FC = () => {
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      background: 'rgba(30, 32, 38, 0.85)',
-      zIndex: 10000,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: 12,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-        minWidth: 360,
-        maxWidth: 480,
-        width: '100%',
-        padding: 32,
-        position: 'relative',
-      }}>
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[10000] flex items-center justify-center">
+      <div className="bg-white rounded-xl shadow-2xl min-w-[360px] max-w-[480px] w-full p-8 relative">
         <StepComponent />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
-          {step > 0 && <button onClick={goBack}>Back</button>}
-          {step < steps.length - 1 && <button onClick={goNext}>Next</button>}
+        <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-200">
+          {step > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={goBack}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Button>
+          )}
+          {step < steps.length - 1 && (
+            <Button 
+              onClick={goNext}
+              className="flex items-center gap-2 ml-auto"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
