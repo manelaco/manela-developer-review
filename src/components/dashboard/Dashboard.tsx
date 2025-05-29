@@ -198,7 +198,7 @@ const Dashboard: React.FC = () => {
   const { user, isSuperadmin, viewedCompanyId } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const { company_id, loading: profileLoading } = useUserProfile(user?.id);
-  const onboardingComplete = useOnboardingStatus(user?.id, company_id);
+  const { status: onboardingStatus, error: onboardingError } = useOnboardingStatus(user?.id);
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery({
     queryKey: ['employees', sidebarWeekStart],
@@ -469,8 +469,12 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  if (profileLoading || onboardingComplete === null) {
+  if (profileLoading || onboardingStatus === 'loading') {
     return <div className="min-h-screen flex items-center justify-center">Checking onboarding status...</div>;
+  }
+
+  if (onboardingStatus === 'error') {
+    return <div className="min-h-screen flex items-center justify-center text-red-600">Error: {onboardingError}</div>;
   }
 
   if (loading) {
@@ -502,7 +506,7 @@ const Dashboard: React.FC = () => {
     <SidebarProvider>
       <div className="flex min-h-screen">
         {/* Dashboard Content */}
-        <div className={`flex-1 ${onboardingComplete === false ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`flex-1 ${onboardingStatus === 'incomplete' ? 'opacity-50 pointer-events-none' : ''}`}>
           {/* Mobile Menu Button */}
           <button 
             className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-[#F8F6F3] border border-[#E5E3DF]"
@@ -795,7 +799,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Onboarding Overlay */}
-        {onboardingComplete === false && <OnboardingOverlay />}
+        {onboardingStatus === 'incomplete' && <OnboardingOverlay />}
       </div>
     </SidebarProvider>
   );

@@ -1,29 +1,34 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/db';
 
-export function useOnboardingStatus(userId: string | undefined, companyId: string | undefined) {
-  const [isComplete, setIsComplete] = useState<boolean | null>(null);
+export function useOnboardingStatus(userId: string | undefined) {
+  const [status, setStatus] = useState<'loading' | 'complete' | 'incomplete' | 'error'>('loading');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId || !companyId) return;
+    if (!userId) {
+      setStatus('error');
+      setError('No user ID');
+      return;
+    }
+    setStatus('loading');
+    supabase
+      .from('user_profiles')
+      .select('onboarding_complete')
+      .eq('id', userId)
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          setStatus('error');
+          setError(error.message);
+          console.error('Onboarding status fetch error:', error);
+        } else if (data?.onboarding_complete) {
+          setStatus('complete');
+        } else {
+          setStatus('incomplete');
+        }
+      });
+  }, [userId]);
 
-    const checkOnboarding = async () => {
-      const { data, error } = await supabase
-        .from('onboarding_users')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('company_id', companyId)
-        .maybeSingle();
-
-      if (error) {
-        setIsComplete(false);
-        return;
-      }
-      setIsComplete(!!data);
-    };
-
-    checkOnboarding();
-  }, [userId, companyId]);
-
-  return isComplete;
+  return { status, error };
 } 

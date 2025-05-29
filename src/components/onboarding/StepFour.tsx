@@ -72,8 +72,7 @@ const StepFour: React.FC = () => {
   const handleComplete = async () => {
     try {
       const onboardingData = JSON.parse(localStorage.getItem('onboardingData') || '{}');
-      const user = supabase.auth.user(); // For Supabase v1
-      // For Supabase v2: const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
         toast.error('User not authenticated.');
@@ -127,6 +126,13 @@ const StepFour: React.FC = () => {
         .from('companies')
         .update({ onboarding_user_id: onboarding.id })
         .eq('id', company.id);
+
+      // 5. Mark onboarding as complete in user_profiles
+      const { error: onboardingFlagError } = await supabase
+        .from('user_profiles')
+        .update({ onboarding_complete: true })
+        .eq('id', user.id);
+      if (onboardingFlagError) throw onboardingFlagError;
 
       toast.success('Onboarding completed successfully!');
       navigate('/dashboard');
