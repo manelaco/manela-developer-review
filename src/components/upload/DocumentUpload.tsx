@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { Upload, FileText, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DocumentUploadProps {
   onUploadComplete?: (files: File[]) => void;
@@ -14,6 +15,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadComplete }) => 
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const { user, viewedCompanyId } = useAuth();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
@@ -39,29 +41,46 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadComplete }) => 
       return;
     }
 
+    if (!viewedCompanyId) {
+      toast.error('Company ID is required for document upload');
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
 
     try {
-      // Simulate upload progress
-      for (let i = 0; i <= 100; i += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setProgress(i);
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('company_id', viewedCompanyId);
+
+        const response = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.details || 'Upload failed');
+        }
+        
+        if (result.extractedData) {
+          toast.success('Insurance document processed successfully', {
+            description: 'AI has extracted the relevant information from your document.'
+          });
+        }
+
+        // Update progress
+        setProgress(prev => prev + (100 / files.length));
       }
 
-      // TODO: Implement actual file upload to your backend
-      // const formData = new FormData();
-      // files.forEach(file => formData.append('files', file));
-      // await fetch('/api/documents/upload', {
-      //   method: 'POST',
-      //   body: formData
-      // });
-
-      toast.success('Files uploaded successfully');
       onUploadComplete?.(files);
       setFiles([]);
     } catch (error) {
-      toast.error('Failed to upload files');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload files';
+      toast.error(errorMessage);
       console.error('Upload error:', error);
     } finally {
       setUploading(false);
@@ -73,9 +92,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadComplete }) => 
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Upload Documents</CardTitle>
+          <CardTitle>Upload Insurance Documents</CardTitle>
           <CardDescription>
-            Upload your leave-related documents. Supported formats: PDF, Images, DOC, DOCX
+            Upload your insurance documents for AI-powered processing. Supported formats: PDF, Images, DOC, DOCX
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -118,16 +137,16 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadComplete }) => 
               {uploading && (
                 <div className="mt-4">
                   <Progress value={progress} className="h-2" />
-                  <p className="text-sm text-gray-500 mt-2">Uploading... {progress}%</p>
+                  <p className="text-sm text-gray-500 mt-2">Uploading and processing... {Math.round(progress)}%</p>
                 </div>
               )}
 
               <Button
                 onClick={handleUpload}
-                disabled={uploading}
+                disabled={uploading || !viewedCompanyId}
                 className="w-full mt-4"
               >
-                {uploading ? 'Uploading...' : 'Upload Files'}
+                {uploading ? 'Processing...' : 'Upload and Process'}
               </Button>
             </div>
           )}
