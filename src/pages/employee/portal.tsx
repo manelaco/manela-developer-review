@@ -1,9 +1,31 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useRouter } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, BookOpen, MessageCircle, Upload } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import EmployeePortal from '@/pages/employee/portal';
+
+export default function EmployeePortalPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && (!user || user.role !== 'employee')) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user || user.role !== 'employee') {
+    return null;
+  }
+
+  return <EmployeePortal />;
+}
 
 const EmployeePortal = () => {
   const navigate = useNavigate();
@@ -78,6 +100,4 @@ const EmployeePortal = () => {
       </main>
     </div>
   );
-};
-
-export default EmployeePortal; 
+}; 

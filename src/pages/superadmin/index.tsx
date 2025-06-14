@@ -1,14 +1,14 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import HRDashboard from '@/pages/hr/dashboard';
+import SuperAdminDashboard from '@/components/superadmin/SuperAdminDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function HRDashboardPage() {
+export default function SuperAdminPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && (!user || user.role !== 'hr_admin')) {
+    if (!loading && (!user || user.role !== 'superadmin')) {
       router.push('/');
     }
   }, [user, loading, router]);
@@ -17,9 +17,9 @@ export default function HRDashboardPage() {
     return <div>Loading...</div>;
   }
 
-  if (!user || user.role !== 'hr_admin') {
+  if (!user || user.role !== 'superadmin') {
     return null;
   }
 
-  return <HRDashboard />;
+  return <SuperAdminDashboard />;
 } 
