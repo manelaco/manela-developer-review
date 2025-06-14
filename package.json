@@ -1,5 +1,8 @@
 {
   "name": "manela-mvp-nextjs",
+  "description": "MANELA MVP - Next.js + Supabase + AI Parental Leave Platform",
+  "framework": "nextjs",
+  "keywords": ["nextjs", "supabase", "ai", "parental-leave", "canada"],
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +10,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "validate": "node validate-framework.js",
+    "predev": "node validate-framework.js",
+    "prebuild": "node validate-framework.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",

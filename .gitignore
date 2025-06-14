@@ -39,19 +39,27 @@ dist-ssr
 # next.js
 /.next/
 /out/
+/build/
+.vercel/
 
-# production
-/build
+# vite specific (prevent accidental addition)
+/dist/
+/vite.config.ts
+/vite.config.js
+/index.html
 
-# misc
+# environment files
+.env.local
+.env.production
+.env.development
+
+# IDE and system files
 .DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# vercel
-.vercel
+*.log
+.idea/
+.vscode/
+*.swp
+*.swo
 
 # typescript
 *.tsbuildinfo
