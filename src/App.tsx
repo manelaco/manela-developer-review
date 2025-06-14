@@ -12,6 +12,9 @@ import StepThree from "./components/onboarding/StepThree";
 import StepFour from "./components/onboarding/StepFour";
 import Dashboard from "./components/dashboard/Dashboard";
 import SuperAdminDashboard from "./components/superadmin/SuperAdminDashboard";
+import EmployeePortal from "./pages/employee/portal";
+import EmployeeUpload from "./pages/employee/upload";
+import HRDashboard from "./pages/hr/dashboard";
 import { useEffect } from 'react';
 import { testSupabaseConnection } from './lib/db';
 import { AuthProvider } from './contexts/AuthContext';
@@ -56,15 +59,51 @@ const App = () => {
                 <Route path="step-four" element={<StepFour />} />
               </Route>
               
+              {/* Employee Routes */}
               <Route 
-                path="/dashboard/*" 
+                path="/employee" 
                 element={
-                  <ProtectedRoute allowedRoles={['hr_admin', 'employee']}>
-                    <Dashboard />
+                  <ProtectedRoute allowedRoles={['employee']}>
+                    <Navigate to="/employee/portal" replace />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/employee/portal" 
+                element={
+                  <ProtectedRoute allowedRoles={['employee']}>
+                    <EmployeePortal />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/employee/upload" 
+                element={
+                  <ProtectedRoute allowedRoles={['employee']}>
+                    <EmployeeUpload />
                   </ProtectedRoute>
                 } 
               />
               
+              {/* HR Routes */}
+              <Route 
+                path="/hr" 
+                element={
+                  <ProtectedRoute allowedRoles={['hr_admin']}>
+                    <Navigate to="/hr/dashboard" replace />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/hr/dashboard" 
+                element={
+                  <ProtectedRoute allowedRoles={['hr_admin']}>
+                    <HRDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Superadmin Routes */}
               <Route 
                 path="/superadmin/*" 
                 element={
