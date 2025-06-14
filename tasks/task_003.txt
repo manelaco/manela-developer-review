@@ -1,0 +1,11 @@
+# Task ID: 3
+# Title: Implement Authentication System with Magic Links
+# Status: pending
+# Dependencies: 2
+# Priority: high
+# Description: Build magic link authentication system for HR admins and employees with 30-day validity
+# Details:
+Create magic link generation function that creates secure tokens with 30-day expiration. Implement email sending service using Supabase Auth or external service like SendGrid. Build magic link verification endpoint that validates tokens and creates user sessions. Handle expired links with appropriate error messages and re-request flow. Implement rate limiting for magic link requests (max 4 failed attempts per email).
+
+# Test Strategy:
+Test magic link generation, email delivery, token validation, expiration handling, and rate limiting scenarios

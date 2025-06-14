@@ -1,0 +1,11 @@
+# Task ID: 5
+# Title: Build Company Registration and Management
+# Status: pending
+# Dependencies: 4
+# Priority: medium
+# Description: Implement company registration flow with domain validation and Superadmin approval
+# Details:
+Create company registration form that validates email domains. Implement auto-pending status for unrecognized domains. Build Superadmin approval interface with company details review. Create notification system for new company registrations. Implement company status management (pending, approved, rejected, suspended).
+
+# Test Strategy:
+Test company registration with various domain scenarios, approval workflow, and status transitions

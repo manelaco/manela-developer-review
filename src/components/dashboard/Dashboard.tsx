@@ -40,7 +40,7 @@ import { testSupabaseConnection } from '../../lib/db';
 import { toZonedTime } from 'date-fns-tz';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { EmployeeForm } from './EmployeeForm';
+import EmployeeForm from './EmployeeForm';
 import { Employee, getEmployees, addEmployee, updateEmployee, deleteEmployee, insertMockEmployees, getEmployeesForWeek } from '@/lib/db';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -501,13 +501,31 @@ const Dashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <Overview />;
-      case 'content':
-        return <ContentDisplay />;
+        return (
+          <Overview
+            employees={employees}
+            isLoading={isLoadingEmployees}
+            onAddEmployee={handleAddEmployee}
+          />
+        );
       case 'employees':
-        return <EmployeeManagement />;
+        return (
+          <EmployeeManagement
+            employees={employees}
+            isLoading={isLoadingEmployees}
+            onAddEmployee={handleAddEmployee}
+            onEditEmployee={handleEditEmployee}
+            onDeleteEmployee={handleDeleteEmployee}
+          />
+        );
       default:
-        return <Overview />;
+        return (
+          <Overview
+            employees={employees}
+            isLoading={isLoadingEmployees}
+            onAddEmployee={handleAddEmployee}
+          />
+        );
     }
   };
 

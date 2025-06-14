@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Implement HR Admin Dashboard
+# Status: pending
+# Dependencies: 6
+# Priority: medium
+# Description: Build HR Admin dashboard with company-scoped management and branding capabilities
+# Details:
+Create HR Admin dashboard layout with employee management, branding, and analytics sections. Implement employee invitation system with magic link generation. Build employee management interface (view list, disable access, revoke invites). Create branding customization panel for logo, fonts, and colors with live preview. Implement company-scoped analytics and reporting features.
+
+# Test Strategy:
+Test employee management functions, branding customization with live updates, and verify data isolation between companies

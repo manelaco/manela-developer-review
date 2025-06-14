@@ -1,0 +1,11 @@
+# Task ID: 15
+# Title: Build User Management and Invitation System
+# Status: pending
+# Dependencies: 14
+# Priority: medium
+# Description: Complete user lifecycle management with invitations, deactivation, and reactivation
+# Details:
+Implement user invitation system with email validation and domain checking. Create user deactivation workflow for inactive users. Build reactivation process for Superadmin and HR Admin. Implement user status management (active, inactive, suspended, pending). Create bulk user operations for efficient management.
+
+# Test Strategy:
+Test invitation flow, deactivation triggers, reactivation process, status transitions, and bulk operations
