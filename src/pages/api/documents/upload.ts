@@ -1,203 +1,406 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import formidable from 'formidable'
-import fs from 'fs'
-import path from 'path'
-import { createClient } from '@supabase/supabase-js'
-import Anthropic from '@anthropic-ai/sdk'
-import OpenAI from 'openai'
+import { NextApiRequest, NextApiResponse } from 'next';
+import { createClient } from '@supabase/supabase-js';
+import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import { IncomingForm } from 'formidable';
+import { readFile } from 'fs/promises';
+import pdfParse from 'pdf-parse';
 
-// Disable Next.js body parsing for file uploads
+// Disable default body parser for file uploads
 export const config = {
   api: {
     bodyParser: false,
   },
-}
+};
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+);
 
 // Initialize AI clients
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-})
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: 'https://openrouter.ai/api/v1',
   defaultHeaders: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL,
+    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     'X-Title': 'Manela MVP',
   },
-})
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Parse the uploaded file
-    const form = formidable({
-      uploadDir: path.join(process.cwd(), 'temp'),
-      keepExtensions: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB
-    })
+    // Parse form data using formidable
+    const form = new IncomingForm();
+    const [fields, files] = await form.parse(req);
+    
+    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    const companyId = Array.isArray(fields.company_id) ? fields.company_id[0] : fields.company_id;
 
-    const [fields, files] = await new Promise<any[]>((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err)
-        else resolve([fields, files])
-      })
-    })
-    const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
 
-    if (!uploadedFile) {
-      return res.status(400).json({ error: 'No file uploaded' })
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
     }
 
     // Read file content
-    const fileContent = fs.readFileSync(uploadedFile.filepath)
-    const fileName = `${Date.now()}-${uploadedFile.originalFilename}`
+    const fileContent = await readFile(file.filepath);
 
     // Upload to Supabase Storage
+    const fileName = `${Date.now()}-${file.originalFilename}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('insurance-documents')
       .upload(fileName, fileContent, {
-        contentType: uploadedFile.mimetype || 'application/pdf',
-      })
+        contentType: file.mimetype || 'application/octet-stream',
+      });
 
     if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`)
+      throw new Error(`Upload failed: ${uploadError.message}`);
     }
 
-    // Process document with AI
-    const extractedData = await processInsuranceDocument(fileContent, uploadedFile.mimetype)
+    // Process document with FIXED dual AI (no hallucination)
+    const extractedData = await processInsuranceDocumentDualAI(fileContent, file.mimetype);
 
-    // Store document record in database (FIXED TABLE NAME)
+    // Store document record in database
     const { data: docRecord, error: dbError } = await supabase
       .from('policy_uploads')
       .insert({
-        company_id: '11111111-1111-1111-1111-111111111111', // We'll make this dynamic later
+        company_id: companyId,
         policy_type: 'insurance',
-        file_name: uploadedFile.originalFilename,
-        file_type: uploadedFile.mimetype,
+        file_name: file.originalFilename,
+        file_type: file.mimetype,
         file_size: fileContent.length,
         storage_path: uploadData.path,
         upload_url: uploadData.path,
         metadata: {
-          originalName: uploadedFile.originalFilename,
+          originalName: file.originalFilename,
           uploadedAt: new Date().toISOString()
         },
         ai_processed: true,
         ai_extraction_data: extractedData,
-        uploaded_by: '11111111-1111-1111-1111-111111111111', // We'll make this dynamic later
+        uploaded_by: "4e70d5f4-50f6-4f28-bc6a-7a418d3a86f3",
         status: 'active',
         version: 1
       })
       .select()
-      .single()
+      .single();
 
-    // Clean up temp file
-    fs.unlinkSync(uploadedFile.filepath)
+    if (dbError) {
+      throw new Error(`Database error: ${dbError.message}`);
+    }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       documentId: docRecord.id,
       extractedData,
       fileUrl: uploadData.path
-    })
+    });
 
   } catch (error) {
-    console.error('Document upload error:', error)
-    res.status(500).json({ 
+    console.error('Document upload error:', error);
+    return res.status(500).json({
       error: 'Document processing failed',
       details: error instanceof Error ? error.message : 'Unknown error'
-    })
+    });
   }
 }
 
-// Real AI document processing implementation
-async function processInsuranceDocument(fileContent: Buffer, mimeType?: string) {
+// FIXED: Dual AI processing - NO HALLUCINATION, VALIDATION ONLY
+async function processInsuranceDocumentDualAI(fileContent: Buffer, mimeType?: string) {
+  
+  function safeJsonParse(text: string) {
+    try {
+      const firstBrace = text.indexOf("{");
+      const lastBrace = text.lastIndexOf("}");
+      
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        const jsonStr = text.substring(firstBrace, lastBrace + 1);
+        return JSON.parse(jsonStr);
+      }
+      
+      return JSON.parse(text);
+    } catch (error) {
+      console.error("JSON parsing error:", error);
+      console.error("Raw text:", text);
+      return {
+        employeeInfo: { name: null, employeeId: null, department: null },
+        insuranceDetails: { provider: null, policyNumber: null, coverageType: null, benefitRate: null, maxWeeks: null },
+        benefitBreakdown: { shortTermDisability: null, maternityCoverage: null, paternalCoverage: null, adoptionCoverage: null },
+        companyPolicy: { topUpProvided: false, topUpPercentage: null, totalCoverage: null },
+        extractionSuccess: false,
+        error: "Failed to parse AI response"
+      };
+    }
+  }
+
   try {
-    // Convert file content to base64
-    const base64Content = fileContent.toString('base64')
+    let extractedText = "";
+    let processingMethod = "";
     
-    // First, use Claude to analyze the document
+    if (mimeType === 'application/pdf') {
+      // Extract text from PDF
+      const pdfData = await pdfParse(fileContent);
+      extractedText = pdfData.text;
+      processingMethod = "PDF_TEXT_EXTRACTION";
+      
+      console.log('=== PDF EXTRACTION DEBUG ===');
+      console.log('Extracted PDF text length:', extractedText.length);
+      console.log('First 500 chars:', extractedText.substring(0, 500));
+      console.log('=============================');
+      
+    } else if (mimeType && mimeType.startsWith('image/')) {
+      // Handle images with Claude vision
+      processingMethod = "IMAGE_OCR";
+      
+      const base64Content = fileContent.toString('base64');
+      
+      console.log('=== IMAGE PROCESSING DEBUG ===');
+      console.log('Image size:', fileContent.length, 'bytes');
+      console.log('MIME type:', mimeType);
+      console.log('===============================');
+      
+      const claudeImageResponse = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4000,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Extract ONLY information that is explicitly visible in this insurance document. Do NOT make assumptions or fill in missing information. Use null for any information not clearly visible.
+
+                Return JSON with this structure:
+                {
+                  "employeeInfo": { "name": string | null, "employeeId": string | null, "department": string | null },
+                  "insuranceDetails": { "provider": string | null, "policyNumber": string | null, "coverageType": string | null, "benefitRate": string | null, "maxWeeks": string | null },
+                  "benefitBreakdown": { "shortTermDisability": string | null, "maternityCoverage": string | null, "paternalCoverage": string | null, "adoptionCoverage": string | null },
+                  "companyPolicy": { "topUpProvided": boolean, "topUpPercentage": string | null, "totalCoverage": string | null }
+                }`
+              },
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mimeType,
+                  data: base64Content
+                }
+              }
+            ]
+          }
+        ]
+      });
+      
+      const imageAnalysis = safeJsonParse(claudeImageResponse.content[0].text);
+      
+      // For images, return directly (no text-based validation possible)
+      return {
+        ...imageAnalysis,
+        extractedAt: new Date().toISOString(),
+        processingMethod,
+        extractionSuccess: true,
+        confidence: {
+          claude: 0.85,
+          extraction: "IMAGE_PROCESSED"
+        }
+      };
+    } else {
+      throw new Error('Unsupported file type for AI extraction');
+    }
+
+    // Check if we have meaningful text content
+    if (!extractedText || extractedText.trim().length < 20) {
+      console.log('=== EXTRACTION FAILED ===');
+      console.log('No meaningful text extracted from document');
+      console.log('Text length:', extractedText?.length || 0);
+      console.log('========================');
+      
+      return {
+        employeeInfo: { name: null, employeeId: null, department: null },
+        insuranceDetails: { provider: null, policyNumber: null, coverageType: null, benefitRate: null, maxWeeks: null },
+        benefitBreakdown: { shortTermDisability: null, maternityCoverage: null, paternalCoverage: null, adoptionCoverage: null },
+        companyPolicy: { topUpProvided: false, topUpPercentage: null, totalCoverage: null },
+        extractedAt: new Date().toISOString(),
+        processingMethod,
+        extractionSuccess: false,
+        reason: "No readable text found in document",
+        confidence: {
+          claude: 0.0,
+          gpt4: 0.0,
+          extraction: "FAILED"
+        }
+      };
+    }
+
+    console.log('=== STARTING DUAL AI PROCESSING ===');
+
+    // PHASE 1: CLAUDE - Conservative extraction (no assumptions)
+    console.log('Phase 1: Claude extraction...');
     const claudeResponse = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20240229',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
       messages: [
         {
           role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Please analyze this insurance document and extract key information in a structured format. Focus on:
-              1. Employee information (name, ID, department)
-              2. Insurance details (provider, policy number, coverage type)
-              3. Benefit breakdown (short-term disability, maternity, paternal, adoption coverage)
-              4. Company policy details (top-up provisions, percentages)
-              
-              Format the response as a JSON object with these exact keys:
-              {
-                "employeeInfo": { "name": string, "employeeId": string, "department": string },
-                "insuranceDetails": { "provider": string, "policyNumber": string, "coverageType": string, "benefitRate": string, "maxWeeks": string },
-                "benefitBreakdown": { "shortTermDisability": string, "maternityCoverage": string, "paternalCoverage": string, "adoptionCoverage": string },
-                "companyPolicy": { "topUpProvided": boolean, "topUpPercentage": string, "totalCoverage": string }
-              }
-              
-              If any information is not found, use "Not specified" as the value.`
+          content: `You are analyzing a Canadian insurance document for parental leave benefits. Extract ONLY information that is explicitly stated in the document text. Do NOT make assumptions, estimates, or fill in missing information.
+
+          CRITICAL RULES:
+          - If any information is not clearly stated in the document, use null for that field
+          - Do NOT invent employee names, companies, or policy numbers
+          - Do NOT make assumptions about coverage percentages
+          - Only extract text that you can see verbatim in the document
+
+          Return a JSON object with these exact keys:
+          {
+            "employeeInfo": { 
+              "name": string | null, 
+              "employeeId": string | null, 
+              "department": string | null 
             },
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mimeType || 'application/pdf',
-                data: base64Content
-              }
+            "insuranceDetails": { 
+              "provider": string | null, 
+              "policyNumber": string | null, 
+              "coverageType": string | null, 
+              "benefitRate": string | null, 
+              "maxWeeks": string | null 
+            },
+            "benefitBreakdown": { 
+              "shortTermDisability": string | null, 
+              "maternityCoverage": string | null, 
+              "paternalCoverage": string | null, 
+              "adoptionCoverage": string | null 
+            },
+            "companyPolicy": { 
+              "topUpProvided": boolean, 
+              "topUpPercentage": string | null, 
+              "totalCoverage": string | null 
             }
-          ]
+          }
+
+          Document text:
+          ${extractedText}
+
+          Remember: Extract ONLY what is explicitly stated. Use null for missing information.`
         }
       ]
-    })
+    });
 
-    // Parse Claude's response
-    const claudeAnalysis = JSON.parse(claudeResponse.content[0].text)
+    const claudeAnalysis = safeJsonParse(claudeResponse.content[0].text);
+    console.log('Claude analysis completed:', claudeAnalysis);
 
-    // Use GPT-4 to validate and enhance the extraction
+    // PHASE 2: GPT-4 - VALIDATION ONLY (no enhancement, no assumptions)
+    console.log('Phase 2: GPT-4 validation...');
     const gptResponse = await openai.chat.completions.create({
       model: 'openai/gpt-4-turbo-preview',
       messages: [
         {
           role: 'system',
-          content: 'You are an expert insurance document analyzer. Your task is to validate and enhance the extracted information from insurance documents.'
+          content: `You are a validator for insurance document extraction. Your ONLY job is to check for obvious parsing errors in extracted data. 
+
+          CRITICAL RULES:
+          - Do NOT add missing information
+          - Do NOT make assumptions or enhancements  
+          - Do NOT fill in empty fields
+          - ONLY correct obvious extraction mistakes where the original text clearly shows something different
+          - Keep null values as null if information is not in the original text
+          - Return data as-is unless there are clear parsing errors`
         },
         {
           role: 'user',
-          content: `Please validate and enhance this extracted insurance information. If any fields are missing or unclear, make reasonable assumptions based on standard insurance practices. Here's the current extraction:
-          ${JSON.stringify(claudeAnalysis, null, 2)}`
+          content: `Validate this extracted insurance data. Fix ONLY obvious parsing errors where you can see the correct information in the original text. Do NOT fill in missing fields or make assumptions.
+
+          Original document excerpt (first 1000 chars):
+          "${extractedText.substring(0, 1000)}"
+          
+          Extracted data to validate:
+          ${JSON.stringify(claudeAnalysis, null, 2)}
+          
+          Return the validated JSON. Keep null values as null if information is not found in the original text. ONLY change fields if there are obvious extraction errors.`
         }
       ],
       response_format: { type: 'json_object' }
-    })
+    });
 
-    // Parse GPT's enhanced response
-    const enhancedAnalysis = JSON.parse(gptResponse.choices[0].message.content)
+    const validatedAnalysis = safeJsonParse(gptResponse.choices[0].message.content || '{}');
+    console.log('GPT-4 validation completed:', validatedAnalysis);
 
-    // Return the final structured data
-    return {
-      ...enhancedAnalysis,
+    // PHASE 3: Calculate REAL confidence based on actual extraction success
+    const extractedFields = [
+      validatedAnalysis.employeeInfo?.name,
+      validatedAnalysis.employeeInfo?.employeeId,
+      validatedAnalysis.insuranceDetails?.provider,
+      validatedAnalysis.insuranceDetails?.policyNumber,
+      validatedAnalysis.benefitBreakdown?.maternityCoverage,
+      validatedAnalysis.companyPolicy?.topUpPercentage
+    ];
+    
+    const successfulExtractions = extractedFields.filter(field => 
+      field !== null && 
+      field !== undefined && 
+      field !== "" && 
+      field !== "Not specified" &&
+      field !== "Not available"
+    ).length;
+    
+    const realConfidence = successfulExtractions / extractedFields.length;
+    
+    console.log('=== CONFIDENCE CALCULATION ===');
+    console.log('Total fields checked:', extractedFields.length);
+    console.log('Successfully extracted:', successfulExtractions);
+    console.log('Real confidence:', realConfidence);
+    console.log('==============================');
+
+    // Return the final validated data with REAL confidence scores
+    const finalResult = {
+      ...validatedAnalysis,
       extractedAt: new Date().toISOString(),
-      processingMethod: "AI_ANALYSIS",
+      processingMethod: "DUAL_AI_VALIDATION",
+      extractionSuccess: realConfidence > 0.1,
+      extractedTextLength: extractedText.length,
       confidence: {
-        claude: 0.95,
-        gpt4: 0.98
+        claude: Math.round(realConfidence * 100) / 100,
+        gpt4: Math.round(realConfidence * 100) / 100,
+        extraction: realConfidence > 0.5 ? "SUCCESS" : realConfidence > 0.1 ? "PARTIAL" : "FAILED",
+        fieldsExtracted: successfulExtractions,
+        totalFields: extractedFields.length
       }
-    }
+    };
+
+    console.log('=== FINAL RESULT ===');
+    console.log(JSON.stringify(finalResult, null, 2));
+    console.log('===================');
+
+    return finalResult;
+
   } catch (error) {
-    console.error('AI processing error:', error)
-    throw new Error(`AI processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.error('=== AI PROCESSING ERROR ===');
+    console.error('Error:', error);
+    console.error('===========================');
+    
+    return {
+      employeeInfo: { name: null, employeeId: null, department: null },
+      insuranceDetails: { provider: null, policyNumber: null, coverageType: null, benefitRate: null, maxWeeks: null },
+      benefitBreakdown: { shortTermDisability: null, maternityCoverage: null, paternalCoverage: null, adoptionCoverage: null },
+      companyPolicy: { topUpProvided: false, topUpPercentage: null, totalCoverage: null },
+      extractedAt: new Date().toISOString(),
+      processingMethod: "ERROR",
+      extractionSuccess: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      confidence: {
+        claude: 0.0,
+        gpt4: 0.0,
+        extraction: "FAILED"
+      }
+    };
   }
 } 
