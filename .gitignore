@@ -61,3 +61,64 @@ lerna-debug.log*
 *.bak
 *.backup
 *~
+
+# Additional security
+**/private.key
+**/public.key
+**/*.pem
+**/certificates/
+**/keys/
+**/auth/
+**/tokens/
+**/passwords/
+**/credentials/
+**/config.local.js
+**/config.prod.js
+**/config.dev.js
+
+# IDE specific
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Debug
+.debug/
+debug.log
+debug/
+*.debug
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+.stylelintcache
+.prettiercache
+
+# Dependencies
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Production
+.env.production
+.env.staging
+.env.test
+.env.development
+.env.local
+.env.*.local
+
+# Supabase
+.supabase/
