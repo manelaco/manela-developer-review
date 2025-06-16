@@ -103,7 +103,7 @@ export const mockEvents = [
 ];
 
 export const mockReturning = [
-  { name: 'David Kim', date: 'Returning May 26 - Family Leave', note: 'Reintegration documents needed', color: 'bg-[#E6F7F1] text-[#1CA97A]' },
+  { name: 'Example User', date: 'Returning May 26 - Family Leave', note: 'Reintegration documents needed', color: 'bg-[#E6F7F1] text-[#1CA97A]' },
 ];
 
 export const mockNews = [

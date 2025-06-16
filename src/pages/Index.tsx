@@ -15,9 +15,9 @@ const Index = () => {
     navigate('/onboarding/step-one');
   };
 
-  const goToLogin = async () => {
+  const handleLogin = async () => {
     try {
-      await login('admin@manela', 'manela');
+      await login(process.env.NEXT_PUBLIC_ADMIN_EMAIL || '', process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '');
     } catch (error) {
       console.error('Login failed:', error);
     }
@@ -35,7 +35,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Logo />
           <div className="flex gap-4">
-            <Button onClick={goToLogin} variant="ghost" className="text-gray-600 hover:text-manela">
+            <Button onClick={handleLogin} variant="ghost" className="text-gray-600 hover:text-manela">
               Login
             </Button>
             <Button onClick={goToSignup} variant="outline" className="border-manela text-manela hover:bg-manela hover:text-white">
