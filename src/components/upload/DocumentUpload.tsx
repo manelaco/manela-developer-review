@@ -1,7 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useRouter } from 'next/router';
 
 export default function DocumentUpload() {
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<string | null>(null);
@@ -47,8 +49,17 @@ export default function DocumentUpload() {
       if (response.ok) {
         const result = await response.json();
         console.log('Upload successful:', result);
-        setUploadResult('Document uploaded and processed successfully! AI extraction completed.');
+        setUploadResult('Document uploaded and processed successfully! Redirecting to employee form...');
         setSelectedFile(null);
+        
+        // Redirect to employee form with extracted data
+        router.push({
+          pathname: '/employee/create',
+          query: { 
+            extractedData: JSON.stringify(result.extractedData),
+            documentId: result.documentId
+          }
+        });
       } else {
         const error = await response.text();
         console.error('Upload failed:', response.status, error);

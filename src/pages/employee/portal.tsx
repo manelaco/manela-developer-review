@@ -1,103 +1,41 @@
-import React, { useEffect } from 'react';
-import { useNavigate, useRouter } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, BookOpen, MessageCircle, Upload } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import EmployeePortal from '@/pages/employee/portal';
+import React from 'react';
+import { useRouter } from 'next/router';
 
-export default function EmployeePortalPage() {
+export default function EmployeePortal() {
   const router = useRouter();
-  const { user, loading } = useAuth();
-
-  useEffect(() => {
-    if (!loading && (!user || user.role !== 'employee')) {
-      router.push('/');
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!user || user.role !== 'employee') {
-    return null;
-  }
-
-  return <EmployeePortal />;
-}
-
-const EmployeePortal = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
-  const handleUploadClick = () => {
-    navigate('/employee/upload');
-  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Employee Portal</h1>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleUploadClick}>
-            <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-manela bg-opacity-10 flex items-center justify-center text-manela mb-4">
-                <Upload className="h-6 w-6" />
-              </div>
-              <CardTitle>Document Upload</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Upload and manage your leave-related documents
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-manela bg-opacity-10 flex items-center justify-center text-manela mb-4">
-                <FileText className="h-6 w-6" />
-              </div>
-              <CardTitle>Leave Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                View your current leave status and upcoming dates
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-manela bg-opacity-10 flex items-center justify-center text-manela mb-4">
-                <BookOpen className="h-6 w-6" />
-              </div>
-              <CardTitle>Resources</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Access guides and resources for your leave period
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-manela bg-opacity-10 flex items-center justify-center text-manela mb-4">
-                <MessageCircle className="h-6 w-6" />
-              </div>
-              <CardTitle>Support</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Get help and support during your leave period
-              </CardDescription>
-            </CardContent>
-          </Card>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">
+            Employee Portal
+          </h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold mb-4">Upload Documents</h2>
+              <p className="text-gray-600 mb-4">
+                Upload your insurance documents for AI processing
+              </p>
+              <button
+                onClick={() => router.push('/employee/upload')}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Go to Upload
+              </button>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold mb-4">My Leave Plan</h2>
+              <p className="text-gray-600 mb-4">
+                View your personalized parental leave timeline
+              </p>
+              <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                View Timeline
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
-}; 
+} 

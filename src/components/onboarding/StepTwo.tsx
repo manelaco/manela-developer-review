@@ -70,8 +70,8 @@ const StepTwo: React.FC = () => {
   // Get domain name from local storage
   const onboardingData = JSON.parse(localStorage.getItem('onboardingData') || '{}');
   const domainName = onboardingData.preferredDomain 
-    ? `${onboardingData.preferredDomain}.manela.com`
-    : 'yourdomain.manela.com';
+    ? `${onboardingData.preferredDomain}.${process.env.NEXT_PUBLIC_COMPANY_DOMAIN}`
+    : `yourdomain.${process.env.NEXT_PUBLIC_COMPANY_DOMAIN}`;
 
   if (context === "left") {
     return (

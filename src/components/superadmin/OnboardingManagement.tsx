@@ -43,7 +43,7 @@ const mockOnboardingData = [
   {
     id: 2,
     companyName: 'TechStart Inc',
-    email: 'admin@techstart.com',
+    email: 'admin@example.com',
     status: 'in_progress',
     currentStep: 2,
     lastUpdated: '2024-03-20T09:15:00Z'

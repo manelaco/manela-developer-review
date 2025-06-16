@@ -22,7 +22,7 @@ const OnboardingLayout: React.FC = () => {
       
       <footer className="border-t border-gray-100 py-4 px-6 text-sm text-gray-500">
         <div className="container flex justify-between">
-          <div>© 2025 manela · All rights reserved.</div>
+          <div>© 2025 {process.env.NEXT_PUBLIC_COMPANY_NAME} · All rights reserved.</div>
           <div className="flex gap-4">
             <a href="#" className="hover:text-manela">Terms & Conditions</a>
             <a href="#" className="hover:text-manela">Privacy Policy</a>

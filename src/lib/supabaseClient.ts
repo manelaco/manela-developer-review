@@ -1,15 +1,27 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 console.log('Environment Variables Debug:')
-console.log('VITE_SUPABASE_URL:', supabaseUrl)
-console.log('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey?.substring(0, 10) + '...') // Only show first 10 chars for security
-console.log('All env variables:', import.meta.env)
+console.log('Supabase URL:', supabaseUrl)
+console.log('Supabase Anon Key:', supabaseAnonKey)
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
+  throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Test connection function
+export const testSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('_test_connection').select('*').limit(1)
+    if (error) throw error
+    console.log('Supabase connection test successful')
+    return true
+  } catch (error) {
+    console.error('Supabase connection test failed:', error)
+    throw error
+  }
+} 

@@ -53,58 +53,82 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Company ID is required' });
     }
 
-    // Read file content
-    const fileContent = await readFile(file.filepath);
+    // Add this right after the file validation
+    console.log('=== UPLOAD DEBUG ===');
+    console.log('File received:', file?.originalFilename);
+    console.log('Company ID:', companyId);
+    console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log('SERVICE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+    console.log('===================');
+
+    // Process document with FIXED dual AI (no hallucination)
+    const extractedData = await processInsuranceDocumentDualAI(file.mimetype, file.filepath);
+
+    console.log('🔄 Starting file storage and database operations...');
+    console.log('📄 File content size:', file.length, 'bytes');
 
     // Upload to Supabase Storage
     const fileName = `${Date.now()}-${file.originalFilename}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('insurance-documents')
-      .upload(fileName, fileContent, {
-        contentType: file.mimetype || 'application/octet-stream',
+    console.log('📤 Attempting storage upload with filename:', fileName);
+
+    try {
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('insurance-documents')
+        .upload(fileName, file, {
+          contentType: file.mimetype || 'application/octet-stream',
+        });
+
+      console.log('📁 Storage upload result:', { uploadData, uploadError });
+      
+      if (uploadError) {
+        console.error('❌ Storage upload failed:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      console.log('✅ Storage upload successful, now attempting database insert...');
+
+      // Store document record in database
+      const { data: docRecord, error: dbError } = await supabase
+        .from('policy_uploads')
+        .insert({
+          company_id: companyId,
+          policy_type: 'insurance',
+          file_name: file.originalFilename,
+          file_type: file.mimetype,
+          file_size: file.length,
+          storage_path: uploadData.path,
+          upload_url: uploadData.path,
+          metadata: {
+            originalName: file.originalFilename,
+            uploadedAt: new Date().toISOString()
+          },
+          ai_processed: true,
+          ai_extraction_data: extractedData,
+          uploaded_by: "4e70d5f4-50f6-4f28-bc6a-7a418d3a86f3",
+          status: 'active',
+          version: 1
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        throw new Error(`Database error: ${dbError.message}`);
+      }
+
+      return res.status(200).json({
+        success: true,
+        documentId: docRecord.id,
+        extractedData,
+        fileUrl: uploadData.path
       });
 
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
+    } catch (error) {
+      console.error('Document upload error:', error);
+      return res.status(500).json({
+        error: 'Document processing failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-
-    // Process document with FIXED dual AI (no hallucination)
-    const extractedData = await processInsuranceDocumentDualAI(fileContent, file.mimetype);
-
-    // Store document record in database
-    const { data: docRecord, error: dbError } = await supabase
-      .from('policy_uploads')
-      .insert({
-        company_id: companyId,
-        policy_type: 'insurance',
-        file_name: file.originalFilename,
-        file_type: file.mimetype,
-        file_size: fileContent.length,
-        storage_path: uploadData.path,
-        upload_url: uploadData.path,
-        metadata: {
-          originalName: file.originalFilename,
-          uploadedAt: new Date().toISOString()
-        },
-        ai_processed: true,
-        ai_extraction_data: extractedData,
-        uploaded_by: "4e70d5f4-50f6-4f28-bc6a-7a418d3a86f3",
-        status: 'active',
-        version: 1
-      })
-      .select()
-      .single();
-
-    if (dbError) {
-      throw new Error(`Database error: ${dbError.message}`);
-    }
-
-    return res.status(200).json({
-      success: true,
-      documentId: docRecord.id,
-      extractedData,
-      fileUrl: uploadData.path
-    });
 
   } catch (error) {
     console.error('Document upload error:', error);
@@ -116,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 // FIXED: Dual AI processing - NO HALLUCINATION, VALIDATION ONLY
-async function processInsuranceDocumentDualAI(fileContent: Buffer, mimeType?: string) {
+async function processInsuranceDocumentDualAI(mimeType: string, filePath: string) {
   
   function safeJsonParse(text: string) {
     try {
@@ -149,7 +173,7 @@ async function processInsuranceDocumentDualAI(fileContent: Buffer, mimeType?: st
     
     if (mimeType === 'application/pdf') {
       // Extract text from PDF
-      const pdfData = await pdfParse(fileContent);
+      const pdfData = await pdfParse(filePath);
       extractedText = pdfData.text;
       processingMethod = "PDF_TEXT_EXTRACTION";
       
@@ -162,10 +186,10 @@ async function processInsuranceDocumentDualAI(fileContent: Buffer, mimeType?: st
       // Handle images with Claude vision
       processingMethod = "IMAGE_OCR";
       
-      const base64Content = fileContent.toString('base64');
+      const base64Content = await readFile(filePath, 'base64');
       
       console.log('=== IMAGE PROCESSING DEBUG ===');
-      console.log('Image size:', fileContent.length, 'bytes');
+      console.log('Image size:', file.length, 'bytes');
       console.log('MIME type:', mimeType);
       console.log('===============================');
       

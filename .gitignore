@@ -1,12 +1,17 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Environment variables
+.env*
+!.env.example
 
+# Sensitive configs
+/config/secrets.js
+/lib/constants/private.ts
+**/secrets.js
+**/private.ts
+**/config.ts
+
+# Local development
+.vercel
+.next
 node_modules
 dist
 dist-ssr
@@ -23,44 +28,36 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
+# Testing and coverage
 /coverage
+.nyc_output
 
-# next.js
-/.next/
-/out/
-/build/
-.vercel/
-
-# vite specific (prevent accidental addition)
-/dist/
-/vite.config.ts
-/vite.config.js
-/index.html
-
-# environment files
-.env.local
-.env.production
-.env.development
-
-# IDE and system files
-.DS_Store
-*.log
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# typescript
+# Build outputs
+/build
+/out
 *.tsbuildinfo
-next-env.d.ts
+
+# Temporary files
+/temp
+temp/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# API keys and secrets
+**/api-keys.json
+**/secrets.json
+**/credentials.json
+
+# Backup files
+*.bak
+*.backup
+*~

@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export type UserRole = 'superadmin' | 'hr_admin' | 'employee';
@@ -32,7 +31,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewedCompanyId, setViewedCompanyId] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Check for stored user data on mount
@@ -50,8 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // For now, we'll use mock data
-      if (email === 'admin@manela' && password === 'manela') {
+      // Check for admin credentials from environment variables
+      if (email === process.env.NEXT_PUBLIC_ADMIN_EMAIL && 
+          password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
         const mockUser: User = {
           id: '1',
           email,
@@ -61,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setUser(mockUser);
         localStorage.setItem('user', JSON.stringify(mockUser));
-        navigate('/superadmin');
+        window.location.assign('/superadmin');
       } else {
         throw new Error('Invalid credentials');
       }
@@ -75,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setViewedCompanyId(null);
     localStorage.removeItem('user');
-    navigate('/');
+    window.location.assign('/');
   };
 
   const viewAsCompany = (companyId: string) => {
