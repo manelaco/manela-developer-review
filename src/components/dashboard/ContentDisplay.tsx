@@ -1,27 +1,25 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Box,
-  Card,
-  CardContent,
-  CardHeader,
-  Typography,
-  Button,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Chip,
-  Grid,
-  Tabs,
-  Tab,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardHeader from '@mui/material/CardHeader';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Chip from '@mui/material/Chip';
+import MUIGrid from '@mui/material/Grid';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import IconButton from '@mui/material/IconButton';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import {
   Search as SearchIcon,
   FilterList as FilterIcon,
@@ -36,11 +34,11 @@ const ContentDisplay: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
-  const [filters, setFilters] = useState({
-    type: '',
-    category: '',
-    search: ''
-  });
+  const [filters, setFilters] = useState<{
+    type?: Content['type'];
+    category?: string;
+    search?: string;
+  }>({});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Fetch content based on user role and filters
@@ -48,8 +46,7 @@ const ContentDisplay: React.FC = () => {
     queryKey: ['content', filters, user?.role],
     queryFn: () => getContent({
       ...filters,
-      status: 'published',
-      targetRoles: user?.role === 'hr_admin' ? ['hr_admin'] : ['employee']
+      status: 'published'
     })
   });
 
@@ -58,7 +55,7 @@ const ContentDisplay: React.FC = () => {
     // Update filters based on tab
     switch (newValue) {
       case 0: // All
-        setFilters(prev => ({ ...prev, type: '' }));
+        setFilters(prev => ({ ...prev, type: undefined }));
         break;
       case 1: // Articles
         setFilters(prev => ({ ...prev, type: 'article' }));
@@ -77,10 +74,8 @@ const ContentDisplay: React.FC = () => {
 
   const handleViewContent = async (content: Content) => {
     setSelectedContent(content);
-    try {
-      await incrementContentView(content.id);
-    } catch (e) {
-      // Optionally handle error
+    if (user) {
+      await incrementContentView(content.id, user.id, user.role);
     }
   };
 
@@ -126,9 +121,9 @@ const ContentDisplay: React.FC = () => {
           {isLoading ? (
             <Typography>Loading...</Typography>
           ) : (
-            <Grid container spacing={2}>
+            <MUIGrid container spacing={2}>
               {content.map((item) => (
-                <Grid item xs={12} md={6} lg={4} key={item.id}>
+                <MUIGrid size={{ xs: 12, md: 6, lg: 4 }} key={item.id}>
                   <Card 
                     sx={{ 
                       height: '100%',
@@ -168,9 +163,9 @@ const ContentDisplay: React.FC = () => {
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>
+                </MUIGrid>
               ))}
-            </Grid>
+            </MUIGrid>
           )}
         </CardContent>
       </Card>
@@ -228,8 +223,8 @@ const ContentDisplay: React.FC = () => {
       >
         <DialogTitle>Filter Content</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
+          <MUIGrid container spacing={2} sx={{ mt: 1 }}>
+            <MUIGrid size={12}>
               <FormControl fullWidth>
                 <InputLabel>Category</InputLabel>
                 <Select
@@ -241,12 +236,12 @@ const ContentDisplay: React.FC = () => {
                   {/* Add categories here */}
                 </Select>
               </FormControl>
-            </Grid>
-          </Grid>
+            </MUIGrid>
+          </MUIGrid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => {
-            setFilters({ type: '', category: '', search: '' });
+            setFilters({ type: undefined, category: '', search: '' });
             setIsFilterOpen(false);
           }}>
             Reset

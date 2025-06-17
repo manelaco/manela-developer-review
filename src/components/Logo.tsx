@@ -1,10 +1,9 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 const Logo: React.FC = () => {
   return (
-    <Link to="/" className="text-manela text-2xl font-serif font-medium">
+    <Link href="/" className="text-manela text-2xl font-serif font-medium">
       manela
     </Link>
   );

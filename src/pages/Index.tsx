@@ -1,18 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/router";
 import Logo from "@/components/Logo";
 import { Users, FileText, BookOpen, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { login } = useAuth();
 
   const startOnboarding = () => {
     // Clear any previous onboarding data
     localStorage.removeItem('onboardingData');
-    navigate('/onboarding/step-one');
+    router.push('/onboarding/step-one');
   };
 
   const handleLogin = async () => {
@@ -26,7 +26,7 @@ const Index = () => {
   const goToSignup = () => {
     // Clear any previous onboarding data
     localStorage.removeItem('onboardingData');
-    navigate('/onboarding/step-one');
+    router.push('/onboarding/step-one');
   };
 
   return (
